@@ -14,6 +14,22 @@ def _overlaps(a, b):
     return a[0] < b[1] and b[0] < a[1]
 
 
+def _merged_tags(confirmed):
+    """합쳐진 태그 목록. 단, 합쳐진 수정을 다른 확정 태그가 이미 따로 지적했으면 경고하지 않는다.
+    (예: PARTICLE '友達を合って' + ORTHOGRAPHY '合って' 가 함께 확정되면 合→会 는 이미 드러나 있다)"""
+    result = []
+    for t in confirmed:
+        edits = merged_edits(t.original, t.corrected)
+        if not edits:
+            continue
+        others = [o for o in confirmed if o is not t and _overlaps((o.start, o.end), (t.start, t.end))]
+        if len(others) + 1 >= len(edits):
+            continue
+        result.append({"type": t.type, "original": t.original, "corrected": t.corrected,
+                       "edits": edits})
+    return result
+
+
 def combine(answer, samples, allowed_codes):
     """samples: GradeResult 리스트. 결과는 Attempt 에 넣을 필드들의 dict."""
     n = len(samples)
@@ -84,8 +100,6 @@ def combine(answer, samples, allowed_codes):
         "dropped_quotes": dropped,
         "dropped_width": dropped_width,
         # 검증 E2: 태그 하나에 서로 다른 단어의 수정이 합쳐진 것 (확정 태그만)
-        "merged_tags": [{"type": t.type, "original": t.original, "corrected": t.corrected,
-                         "edits": merged_edits(t.original, t.corrected)}
-                        for t in confirmed if merged_edits(t.original, t.corrected)],
+        "merged_tags": _merged_tags(confirmed),
         "n_samples": n,
     }

@@ -8,8 +8,9 @@ DATA_FILE = ROOT / "data" / "attempts.jsonl"
 SAMPLES_FILE = ROOT / "samples" / "attempts.jsonl"
 
 
-def append(attempt, path=DATA_FILE):
-    path = Path(path)
+def append(attempt, path=None):
+    # 기본값을 함수 안에서 정한다 (def 줄에 쓰면 정의 시점에 고정돼서 DATA_FILE 을 바꿔도 반영이 안 된다)
+    path = Path(path or DATA_FILE)
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "a", encoding="utf-8") as f:
         f.write(attempt.model_dump_json() + "\n")

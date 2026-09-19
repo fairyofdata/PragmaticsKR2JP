@@ -82,6 +82,12 @@ def test_merged_tag_is_reported():
                                               {"original": "合", "corrected": "会"}]
 
 
+def test_merged_warning_skipped_when_other_tag_covers_it():
+    tags = [tag("PARTICLE", "友達を合い", "友達に会い"), tag("ORTHOGRAPHY", "合い", "会い")]
+    out = combine(ANSWER, [result(tags)] * 3, GRAMMAR)
+    assert out["merged_tags"] == []
+
+
 def test_okurigana_and_keigo_are_not_merged():
     for a, b in [("薬を食べて", "薬を飲んで"), ("連絡しました", "ご連絡いたしました")]:
         assert merged_edits(a, b) == []
