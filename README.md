@@ -151,10 +151,10 @@ copy .env.example .env        # OPENAI_API_KEY (또는 GEMINI_API_KEY + LLM_PROV
 
 ```
 app.py                  Streamlit 화면
-coach/taxonomy.py       오류 유형표 v0 (순서 = 우선순위)
+coach/taxonomy.py       오류 유형표 v1 (순서 = 우선순위)
 coach/prompts.py        출제·채점 프롬프트
 coach/llm.py            LLM 호출 (여기만 바꾸면 제공자 교체)
-coach/verify.py         끌려가지 않기 검증 D·E
+coach/verify.py         끌려가지 않기 검증 D·E·E2
 coach/voting.py         3회 채점 다수결
 coach/stats.py          집계 (순수 함수)
 experiments/            평가 세트, 실험 스크립트, 결과
