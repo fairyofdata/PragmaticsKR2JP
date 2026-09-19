@@ -7,7 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-SCHEMA_VERSION = "s0"
+SCHEMA_VERSION = "s1"  # s0 → s1: dropped_width, merged_tags 추가
 
 
 # ---------- LLM이 돌려주는 것 ----------
@@ -64,6 +64,8 @@ class Attempt(BaseModel):
     tentative_errors: list[VotedTag]   # 참고 (낮은 확신) — 집계 제외
     untagged_changes: list[UntaggedChange]
     dropped_quotes: int                # 원문에 없는 인용이라 버린 태그 수
+    dropped_width: int = 0             # 전각/반각 차이뿐이라 버린 태그 수 (s1~)
+    merged_tags: list[dict] = []       # 태그 하나에 합쳐진 수정들 (s1~) [{type, original, corrected, edits}]
     n_samples: int
     taxonomy_version: str
     prompt_version: str

@@ -64,6 +64,10 @@ def show_result(r):
         with st.expander(f"참고: 낮은 확신 {len(r['tentative_errors'])}건 (과반 미달, 집계 제외)"):
             for e in r["tentative_errors"]:
                 st.markdown(tag_line(e, r["n_samples"]))
+    for m in r.get("merged_tags", []):
+        edits = ", ".join(f"`{e['original']}`→`{e['corrected']}`" for e in m["edits"])
+        st.warning(f"태그 하나에 수정이 {len(m['edits'])}개 합쳐져 있습니다: {edits} "
+                   f"(붙은 유형은 [{name_ko(m['type'])}] 하나뿐 — 나머지 수정도 따로 확인하세요)")
     if r["untagged_changes"]:
         changes = ", ".join(f"`{c['original']}`→`{c['corrected']}`" for c in r["untagged_changes"])
         st.warning(f"태그 없이 고쳐진 곳이 있습니다 (설명 누락): {changes}")
@@ -75,8 +79,9 @@ tab_practice, tab_summary = st.tabs(["연습", "요약"])
 
 # ---------- 연습 ----------
 with tab_practice:
-    if not os.getenv("GEMINI_API_KEY"):
-        st.error("GEMINI_API_KEY 가 없습니다. .env.example 을 .env 로 복사해 키를 넣어 주세요.")
+    key_name = "GEMINI_API_KEY" if os.getenv("LLM_PROVIDER") == "gemini" else "OPENAI_API_KEY"
+    if not os.getenv(key_name):
+        st.error(f"{key_name} 가 없습니다. .env.example 을 .env 로 복사해 키를 넣어 주세요.")
 
     if st.button("과제 받기", type="primary"):
         from coach import llm

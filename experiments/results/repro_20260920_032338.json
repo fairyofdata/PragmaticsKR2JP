@@ -1,0 +1,1140 @@
+{
+  "date": "2026-09-20T03:17:30+09:00",
+  "provider": "openai",
+  "model": "gpt-5.6-terra",
+  "reasoning": "low",
+  "n_samples_vote": 3,
+  "runs": 3,
+  "taxonomy_version": "v1",
+  "prompt_version": "p1",
+  "conditions": {
+    "plain": {
+      "all": {
+        "items": 12,
+        "exact": 0.4166666666666667,
+        "jaccard": 0.75,
+        "recall_loc": 0.9607843137254902,
+        "recall_type": 0.49019607843137253,
+        "clean_tags": 1.1666666666666667,
+        "extra_tags": 0.7,
+        "untagged_changes": 3,
+        "dropped_quotes": 1
+      },
+      "by_mode": {
+        "grammar": {
+          "items": 6,
+          "exact": 0.6666666666666666,
+          "jaccard": 0.8333333333333334,
+          "recall_loc": 1.0,
+          "recall_type": 0.2916666666666667,
+          "clean_tags": 0.0,
+          "extra_tags": 0.6,
+          "untagged_changes": 1,
+          "dropped_quotes": 0
+        },
+        "expression": {
+          "items": 6,
+          "exact": 0.16666666666666666,
+          "jaccard": 0.6666666666666666,
+          "recall_loc": 0.9259259259259259,
+          "recall_type": 0.6666666666666666,
+          "clean_tags": 2.3333333333333335,
+          "extra_tags": 0.8,
+          "untagged_changes": 2,
+          "dropped_quotes": 1
+        }
+      },
+      "per_type": {
+        "COLLOCATION": {
+          "any": 2,
+          "all": 1,
+          "rate": 0.5
+        },
+        "CONJUGATION": {
+          "any": 1,
+          "all": 0,
+          "rate": 0.0
+        },
+        "CONNECTIVE": {
+          "any": 2,
+          "all": 1,
+          "rate": 0.5
+        },
+        "ORTHOGRAPHY": {
+          "any": 1,
+          "all": 0,
+          "rate": 0.0
+        },
+        "OTHER": {
+          "any": 2,
+          "all": 1,
+          "rate": 0.5
+        },
+        "PARTICLE": {
+          "any": 2,
+          "all": 1,
+          "rate": 0.5
+        },
+        "POLITENESS": {
+          "any": 3,
+          "all": 3,
+          "rate": 1.0
+        },
+        "REGISTER": {
+          "any": 3,
+          "all": 2,
+          "rate": 0.6666666666666666
+        },
+        "SENTENCE_END": {
+          "any": 1,
+          "all": 1,
+          "rate": 1.0
+        },
+        "TENSE_ASPECT": {
+          "any": 3,
+          "all": 2,
+          "rate": 0.6666666666666666
+        },
+        "WORD_CHOICE": {
+          "any": 5,
+          "all": 1,
+          "rate": 0.2
+        }
+      },
+      "usage": {
+        "input_tokens": 15255,
+        "output_tokens": 11441,
+        "thinking_tokens": 1029
+      },
+      "items": [
+        {
+          "id": "G1",
+          "mode": "grammar",
+          "exact": true,
+          "jaccard": 1.0,
+          "expected_n": 6,
+          "loc_hits": 6,
+          "type_hits": 3,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [
+              "PARTICLE"
+            ],
+            [
+              "PARTICLE"
+            ],
+            [
+              "PARTICLE"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "G2",
+          "mode": "grammar",
+          "exact": false,
+          "jaccard": 0.6666666666666666,
+          "expected_n": 3,
+          "loc_hits": 3,
+          "type_hits": 0,
+          "extra_tags": 2.0,
+          "type_sets": [
+            [
+              "OTHER"
+            ],
+            [
+              "OTHER"
+            ],
+            [
+              "CONNECTIVE",
+              "OTHER"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "G3",
+          "mode": "grammar",
+          "exact": true,
+          "jaccard": 1.0,
+          "expected_n": 6,
+          "loc_hits": 6,
+          "type_hits": 0,
+          "extra_tags": 1.0,
+          "type_sets": [
+            [
+              "CONNECTIVE",
+              "TENSE_ASPECT"
+            ],
+            [
+              "CONNECTIVE",
+              "TENSE_ASPECT"
+            ],
+            [
+              "CONNECTIVE",
+              "TENSE_ASPECT"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "G4",
+          "mode": "grammar",
+          "exact": true,
+          "jaccard": 1.0,
+          "expected_n": 3,
+          "loc_hits": 3,
+          "type_hits": 0,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [
+              "TENSE_ASPECT"
+            ],
+            [
+              "TENSE_ASPECT"
+            ],
+            [
+              "TENSE_ASPECT"
+            ]
+          ],
+          "untagged_changes": 1,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "G5",
+          "mode": "grammar",
+          "exact": false,
+          "jaccard": 0.3333333333333333,
+          "expected_n": 6,
+          "loc_hits": 6,
+          "type_hits": 4,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [
+              "PARTICLE",
+              "TENSE_ASPECT"
+            ],
+            [
+              "CONJUGATION",
+              "PARTICLE"
+            ],
+            [
+              "CONJUGATION",
+              "TENSE_ASPECT"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "G6",
+          "mode": "grammar",
+          "exact": true,
+          "jaccard": 1.0,
+          "expected_n": 0,
+          "loc_hits": 0,
+          "type_hits": 0,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [],
+            [],
+            []
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "E1",
+          "mode": "expression",
+          "exact": false,
+          "jaccard": 0.7777777777777777,
+          "expected_n": 9,
+          "loc_hits": 9,
+          "type_hits": 8,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [
+              "POLITENESS",
+              "REGISTER"
+            ],
+            [
+              "POLITENESS",
+              "REGISTER",
+              "WORD_CHOICE"
+            ],
+            [
+              "POLITENESS",
+              "REGISTER"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 1
+        },
+        {
+          "id": "E2",
+          "mode": "expression",
+          "exact": true,
+          "jaccard": 1.0,
+          "expected_n": 3,
+          "loc_hits": 3,
+          "type_hits": 3,
+          "extra_tags": 1.0,
+          "type_sets": [
+            [
+              "POLITENESS",
+              "WORD_CHOICE"
+            ],
+            [
+              "POLITENESS",
+              "WORD_CHOICE"
+            ],
+            [
+              "POLITENESS",
+              "WORD_CHOICE"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "E3",
+          "mode": "expression",
+          "exact": false,
+          "jaccard": 0.6666666666666666,
+          "expected_n": 6,
+          "loc_hits": 4,
+          "type_hits": 3,
+          "extra_tags": 0.3333333333333333,
+          "type_sets": [
+            [
+              "COLLOCATION"
+            ],
+            [
+              "COLLOCATION"
+            ],
+            [
+              "COLLOCATION",
+              "WORD_CHOICE"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "E4",
+          "mode": "expression",
+          "exact": false,
+          "jaccard": 0.3333333333333333,
+          "expected_n": 3,
+          "loc_hits": 3,
+          "type_hits": 0,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [
+              "OTHER"
+            ],
+            [
+              "WORD_CHOICE"
+            ],
+            [
+              "WORD_CHOICE"
+            ]
+          ],
+          "untagged_changes": 1,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "E5",
+          "mode": "expression",
+          "exact": false,
+          "jaccard": 0.6666666666666666,
+          "expected_n": 6,
+          "loc_hits": 6,
+          "type_hits": 4,
+          "extra_tags": 2.6666666666666665,
+          "type_sets": [
+            [
+              "COLLOCATION",
+              "POLITENESS",
+              "REGISTER"
+            ],
+            [
+              "POLITENESS",
+              "REGISTER",
+              "WORD_CHOICE"
+            ],
+            [
+              "COLLOCATION",
+              "POLITENESS",
+              "REGISTER"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "E6",
+          "mode": "expression",
+          "exact": false,
+          "jaccard": 0.5555555555555555,
+          "expected_n": 0,
+          "loc_hits": 0,
+          "type_hits": 0,
+          "extra_tags": 2.3333333333333335,
+          "type_sets": [
+            [
+              "SENTENCE_END"
+            ],
+            [
+              "ORTHOGRAPHY",
+              "REGISTER",
+              "SENTENCE_END"
+            ],
+            [
+              "ORTHOGRAPHY",
+              "REGISTER",
+              "SENTENCE_END"
+            ]
+          ],
+          "untagged_changes": 1,
+          "dropped_quotes": 0
+        }
+      ]
+    },
+    "guide": {
+      "all": {
+        "items": 12,
+        "exact": 0.5833333333333334,
+        "jaccard": 0.7731481481481483,
+        "recall_loc": 0.9019607843137255,
+        "recall_type": 0.7058823529411765,
+        "clean_tags": 0.3333333333333333,
+        "extra_tags": 0.1,
+        "untagged_changes": 0,
+        "dropped_quotes": 0
+      },
+      "by_mode": {
+        "grammar": {
+          "items": 6,
+          "exact": 0.6666666666666666,
+          "jaccard": 0.8611111111111112,
+          "recall_loc": 1.0,
+          "recall_type": 0.625,
+          "clean_tags": 0.0,
+          "extra_tags": 0.06666666666666667,
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        "expression": {
+          "items": 6,
+          "exact": 0.5,
+          "jaccard": 0.6851851851851851,
+          "recall_loc": 0.8148148148148148,
+          "recall_type": 0.7777777777777778,
+          "clean_tags": 0.6666666666666666,
+          "extra_tags": 0.13333333333333333,
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        }
+      },
+      "per_type": {
+        "COLLOCATION": {
+          "any": 2,
+          "all": 1,
+          "rate": 0.5
+        },
+        "CONJUGATION": {
+          "any": 2,
+          "all": 1,
+          "rate": 0.5
+        },
+        "CONNECTIVE": {
+          "any": 1,
+          "all": 0,
+          "rate": 0.0
+        },
+        "ORTHOGRAPHY": {
+          "any": 2,
+          "all": 0,
+          "rate": 0.0
+        },
+        "PARTICLE": {
+          "any": 2,
+          "all": 2,
+          "rate": 1.0
+        },
+        "POLITENESS": {
+          "any": 3,
+          "all": 2,
+          "rate": 0.6666666666666666
+        },
+        "REGISTER": {
+          "any": 2,
+          "all": 1,
+          "rate": 0.5
+        },
+        "TENSE_ASPECT": {
+          "any": 2,
+          "all": 1,
+          "rate": 0.5
+        },
+        "VOICE": {
+          "any": 1,
+          "all": 1,
+          "rate": 1.0
+        },
+        "WORD_CHOICE": {
+          "any": 1,
+          "all": 0,
+          "rate": 0.0
+        }
+      },
+      "usage": {
+        "input_tokens": 57165,
+        "output_tokens": 8931,
+        "thinking_tokens": 2172
+      },
+      "items": [
+        {
+          "id": "G1",
+          "mode": "grammar",
+          "exact": false,
+          "jaccard": 0.6666666666666666,
+          "expected_n": 6,
+          "loc_hits": 6,
+          "type_hits": 4,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [
+              "PARTICLE"
+            ],
+            [
+              "PARTICLE"
+            ],
+            [
+              "ORTHOGRAPHY",
+              "PARTICLE"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "G2",
+          "mode": "grammar",
+          "exact": true,
+          "jaccard": 1.0,
+          "expected_n": 3,
+          "loc_hits": 3,
+          "type_hits": 0,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [],
+            [],
+            []
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "G3",
+          "mode": "grammar",
+          "exact": false,
+          "jaccard": 0.5,
+          "expected_n": 6,
+          "loc_hits": 6,
+          "type_hits": 5,
+          "extra_tags": 0.3333333333333333,
+          "type_sets": [
+            [
+              "CONNECTIVE",
+              "TENSE_ASPECT",
+              "VOICE"
+            ],
+            [
+              "CONJUGATION",
+              "VOICE"
+            ],
+            [
+              "CONJUGATION",
+              "VOICE"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "G4",
+          "mode": "grammar",
+          "exact": true,
+          "jaccard": 1.0,
+          "expected_n": 3,
+          "loc_hits": 3,
+          "type_hits": 0,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [
+              "TENSE_ASPECT"
+            ],
+            [
+              "TENSE_ASPECT"
+            ],
+            [
+              "TENSE_ASPECT"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "G5",
+          "mode": "grammar",
+          "exact": true,
+          "jaccard": 1.0,
+          "expected_n": 6,
+          "loc_hits": 6,
+          "type_hits": 6,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [
+              "CONJUGATION",
+              "PARTICLE"
+            ],
+            [
+              "CONJUGATION",
+              "PARTICLE"
+            ],
+            [
+              "CONJUGATION",
+              "PARTICLE"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "G6",
+          "mode": "grammar",
+          "exact": true,
+          "jaccard": 1.0,
+          "expected_n": 0,
+          "loc_hits": 0,
+          "type_hits": 0,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [],
+            [],
+            []
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "E1",
+          "mode": "expression",
+          "exact": false,
+          "jaccard": 0.6666666666666666,
+          "expected_n": 9,
+          "loc_hits": 9,
+          "type_hits": 8,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [
+              "POLITENESS",
+              "REGISTER"
+            ],
+            [
+              "POLITENESS"
+            ],
+            [
+              "POLITENESS",
+              "REGISTER"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "E2",
+          "mode": "expression",
+          "exact": false,
+          "jaccard": 0.1111111111111111,
+          "expected_n": 3,
+          "loc_hits": 2,
+          "type_hits": 2,
+          "extra_tags": 0.6666666666666666,
+          "type_sets": [
+            [
+              "POLITENESS",
+              "WORD_CHOICE"
+            ],
+            [],
+            [
+              "COLLOCATION",
+              "WORD_CHOICE"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "E3",
+          "mode": "expression",
+          "exact": true,
+          "jaccard": 1.0,
+          "expected_n": 6,
+          "loc_hits": 5,
+          "type_hits": 5,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [
+              "COLLOCATION"
+            ],
+            [
+              "COLLOCATION"
+            ],
+            [
+              "COLLOCATION"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "E4",
+          "mode": "expression",
+          "exact": true,
+          "jaccard": 1.0,
+          "expected_n": 3,
+          "loc_hits": 0,
+          "type_hits": 0,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [],
+            [],
+            []
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "E5",
+          "mode": "expression",
+          "exact": true,
+          "jaccard": 1.0,
+          "expected_n": 6,
+          "loc_hits": 6,
+          "type_hits": 6,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [
+              "POLITENESS",
+              "REGISTER"
+            ],
+            [
+              "POLITENESS",
+              "REGISTER"
+            ],
+            [
+              "POLITENESS",
+              "REGISTER"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "E6",
+          "mode": "expression",
+          "exact": false,
+          "jaccard": 0.3333333333333333,
+          "expected_n": 0,
+          "loc_hits": 0,
+          "type_hits": 0,
+          "extra_tags": 0.6666666666666666,
+          "type_sets": [
+            [
+              "ORTHOGRAPHY"
+            ],
+            [
+              "ORTHOGRAPHY"
+            ],
+            []
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        }
+      ]
+    },
+    "vote": {
+      "all": {
+        "items": 12,
+        "exact": 0.6666666666666666,
+        "jaccard": 0.8379629629629629,
+        "recall_loc": 0.8627450980392157,
+        "recall_type": 0.6274509803921569,
+        "clean_tags": 0.5,
+        "extra_tags": 0.13333333333333333,
+        "untagged_changes": 0,
+        "dropped_quotes": 0
+      },
+      "by_mode": {
+        "grammar": {
+          "items": 6,
+          "exact": 0.6666666666666666,
+          "jaccard": 0.8518518518518517,
+          "recall_loc": 1.0,
+          "recall_type": 0.5833333333333334,
+          "clean_tags": 0.0,
+          "extra_tags": 0.06666666666666667,
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        "expression": {
+          "items": 6,
+          "exact": 0.6666666666666666,
+          "jaccard": 0.8240740740740741,
+          "recall_loc": 0.7407407407407407,
+          "recall_type": 0.6666666666666666,
+          "clean_tags": 1.0,
+          "extra_tags": 0.2,
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        }
+      },
+      "per_type": {
+        "COLLOCATION": {
+          "any": 2,
+          "all": 1,
+          "rate": 0.5
+        },
+        "CONJUGATION": {
+          "any": 1,
+          "all": 1,
+          "rate": 1.0
+        },
+        "CONNECTIVE": {
+          "any": 2,
+          "all": 1,
+          "rate": 0.5
+        },
+        "ORTHOGRAPHY": {
+          "any": 1,
+          "all": 1,
+          "rate": 1.0
+        },
+        "PARTICLE": {
+          "any": 2,
+          "all": 2,
+          "rate": 1.0
+        },
+        "POLITENESS": {
+          "any": 3,
+          "all": 2,
+          "rate": 0.6666666666666666
+        },
+        "REGISTER": {
+          "any": 2,
+          "all": 1,
+          "rate": 0.5
+        },
+        "TENSE_ASPECT": {
+          "any": 2,
+          "all": 0,
+          "rate": 0.0
+        },
+        "VOICE": {
+          "any": 1,
+          "all": 1,
+          "rate": 1.0
+        },
+        "WORD_CHOICE": {
+          "any": 1,
+          "all": 0,
+          "rate": 0.0
+        }
+      },
+      "usage": {
+        "input_tokens": 171495,
+        "output_tokens": 25953,
+        "thinking_tokens": 5014
+      },
+      "items": [
+        {
+          "id": "G1",
+          "mode": "grammar",
+          "exact": true,
+          "jaccard": 1.0,
+          "expected_n": 6,
+          "loc_hits": 6,
+          "type_hits": 3,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [
+              "PARTICLE"
+            ],
+            [
+              "PARTICLE"
+            ],
+            [
+              "PARTICLE"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "G2",
+          "mode": "grammar",
+          "exact": true,
+          "jaccard": 1.0,
+          "expected_n": 3,
+          "loc_hits": 3,
+          "type_hits": 0,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [],
+            [],
+            []
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "G3",
+          "mode": "grammar",
+          "exact": false,
+          "jaccard": 0.7777777777777777,
+          "expected_n": 6,
+          "loc_hits": 6,
+          "type_hits": 3,
+          "extra_tags": 0.3333333333333333,
+          "type_sets": [
+            [
+              "CONNECTIVE",
+              "VOICE"
+            ],
+            [
+              "CONNECTIVE",
+              "TENSE_ASPECT",
+              "VOICE"
+            ],
+            [
+              "CONNECTIVE",
+              "VOICE"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "G4",
+          "mode": "grammar",
+          "exact": false,
+          "jaccard": 0.3333333333333333,
+          "expected_n": 3,
+          "loc_hits": 3,
+          "type_hits": 2,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [
+              "CONNECTIVE"
+            ],
+            [
+              "CONNECTIVE"
+            ],
+            [
+              "TENSE_ASPECT"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "G5",
+          "mode": "grammar",
+          "exact": true,
+          "jaccard": 1.0,
+          "expected_n": 6,
+          "loc_hits": 6,
+          "type_hits": 6,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [
+              "CONJUGATION",
+              "PARTICLE"
+            ],
+            [
+              "CONJUGATION",
+              "PARTICLE"
+            ],
+            [
+              "CONJUGATION",
+              "PARTICLE"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "G6",
+          "mode": "grammar",
+          "exact": true,
+          "jaccard": 1.0,
+          "expected_n": 0,
+          "loc_hits": 0,
+          "type_hits": 0,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [],
+            [],
+            []
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "E1",
+          "mode": "expression",
+          "exact": false,
+          "jaccard": 0.6666666666666666,
+          "expected_n": 9,
+          "loc_hits": 9,
+          "type_hits": 7,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [
+              "POLITENESS"
+            ],
+            [
+              "POLITENESS"
+            ],
+            [
+              "POLITENESS",
+              "REGISTER"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "E2",
+          "mode": "expression",
+          "exact": false,
+          "jaccard": 0.27777777777777773,
+          "expected_n": 3,
+          "loc_hits": 2,
+          "type_hits": 2,
+          "extra_tags": 1.0,
+          "type_sets": [
+            [
+              "POLITENESS",
+              "WORD_CHOICE"
+            ],
+            [
+              "COLLOCATION",
+              "WORD_CHOICE"
+            ],
+            [
+              "POLITENESS"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "E3",
+          "mode": "expression",
+          "exact": true,
+          "jaccard": 1.0,
+          "expected_n": 6,
+          "loc_hits": 3,
+          "type_hits": 3,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [
+              "COLLOCATION"
+            ],
+            [
+              "COLLOCATION"
+            ],
+            [
+              "COLLOCATION"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "E4",
+          "mode": "expression",
+          "exact": true,
+          "jaccard": 1.0,
+          "expected_n": 3,
+          "loc_hits": 0,
+          "type_hits": 0,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [],
+            [],
+            []
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "E5",
+          "mode": "expression",
+          "exact": true,
+          "jaccard": 1.0,
+          "expected_n": 6,
+          "loc_hits": 6,
+          "type_hits": 6,
+          "extra_tags": 0.0,
+          "type_sets": [
+            [
+              "POLITENESS",
+              "REGISTER"
+            ],
+            [
+              "POLITENESS",
+              "REGISTER"
+            ],
+            [
+              "POLITENESS",
+              "REGISTER"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        },
+        {
+          "id": "E6",
+          "mode": "expression",
+          "exact": true,
+          "jaccard": 1.0,
+          "expected_n": 0,
+          "loc_hits": 0,
+          "type_hits": 0,
+          "extra_tags": 1.0,
+          "type_sets": [
+            [
+              "ORTHOGRAPHY"
+            ],
+            [
+              "ORTHOGRAPHY"
+            ],
+            [
+              "ORTHOGRAPHY"
+            ]
+          ],
+          "untagged_changes": 0,
+          "dropped_quotes": 0
+        }
+      ]
+    }
+  }
+}

@@ -1,12 +1,16 @@
-"""오류 유형표 v0.
+"""오류 유형표.
 
 규칙
 - 코드(영문)는 저장용. 한 번 쓴 코드는 바꾸지 않는다. 이름·설명은 바뀌어도 된다.
-- 유형을 추가·삭제·병합하면 TAXONOMY_VERSION 을 올린다.
+- 유형을 추가·삭제·병합하거나 순서(=우선순위)를 바꾸면 TAXONOMY_VERSION 을 올린다.
 - mode: "grammar"(문법 모드), "expression"(표현 모드), "common"(두 모드 공통)
+
+변경 이력
+- v0: 최초 13개 유형 (공통 2, 문법 5, 표현 6)
+- v1: COLLOCATION 을 WORD_CHOICE 위로 (더 구체적인 유형이 우선). 유형 구성은 v0 과 같다.
 """
 
-TAXONOMY_VERSION = "v0"
+TAXONOMY_VERSION = "v1"
 
 MODES = {
     "grammar": "문법 모드 — 형태·통사 (정확성)",
@@ -23,7 +27,8 @@ ERROR_TYPES = {
         "name_ko": "표기·오타·변환 실수",
         "mode": "common",
         "definition": "가나·한자·오쿠리가나·장음·문장부호의 잘못, 오타, IME 변환 실수(同音異字).",
-        "boundary": "읽기가 같은데 한자만 틀렸으면 여기. 읽기까지 다른 다른 단어를 골랐으면 WORD_CHOICE.",
+        "boundary": "읽기가 같은데 한자만 틀렸으면 여기. 읽기까지 다른 다른 단어를 골랐으면 WORD_CHOICE. "
+                    "반각 !? 와 전각 ！？ 의 차이, 반각/전각 공백 차이는 오류가 아니다.",
         "contrast": "話を聞く ○ / 話を効く ✕",
     },
     # ---- 문법 모드 ----
@@ -84,19 +89,19 @@ ERROR_TYPES = {
         "boundary": "경어 수준이 아니라 단정·추측·완곡의 정도가 문제일 때.",
         "contrast": "(의견을 말할 때) 〜だと思います ○ / 〜です ✕ (지나친 단정)",
     },
+    "COLLOCATION": {
+        "name_ko": "연어·관용 표현",
+        "mode": "expression",
+        "definition": "관습적으로 함께 쓰이는 단어 조합(명사+동사 등), 관용구.",
+        "boundary": "단어 하나를 바꾸는 것이지만 문제가 '짝이 되는 말과의 조합'에 있으면 WORD_CHOICE 가 아니라 여기.",
+        "contrast": "風邪をひく ○ / 風邪にかかる ✕",
+    },
     "WORD_CHOICE": {
         "name_ko": "어휘 선택",
         "mode": "expression",
         "definition": "뜻은 통하지만 맥락·뉘앙스에 맞지 않는 단어. 유의어, 조수사, 의성어·의태어 포함.",
         "boundary": "단어 하나의 선택. 단어 조합이 관습에 어긋나면 COLLOCATION.",
         "contrast": "(결근) 体調不良で休みます ○ / 体調不良で休憩します ✕",
-    },
-    "COLLOCATION": {
-        "name_ko": "연어·관용 표현",
-        "mode": "expression",
-        "definition": "관습적으로 함께 쓰이는 단어 조합, 관용구.",
-        "boundary": "",
-        "contrast": "風邪をひく ○ / 風邪にかかる ✕",
     },
     "DISCOURSE": {
         "name_ko": "문장 구조·담화",

@@ -15,6 +15,8 @@
 
 실행: python -m experiments.repro            (전부)
       python -m experiments.repro --only G1  (한 건만, 동작 확인용)
+      python -m experiments.repro --rescore experiments/results/<파일>.json
+                                             (저장된 원래 응답으로 다시 채점. API 호출 없음)
 """
 
 import argparse
@@ -25,7 +27,7 @@ from pathlib import Path
 
 from coach import llm
 from coach.prompts import PROMPT_VERSION, grade_prompt, plain_grade_prompt
-from coach.schemas import Task
+from coach.schemas import GradeResult, Task
 from coach.taxonomy import OUT_OF_MODE, TAXONOMY_VERSION, codes_for_mode
 from coach.verify import find_span
 from coach.voting import combine
@@ -40,23 +42,28 @@ def load_eval_set():
 
 
 def run_condition(item, condition):
-    """한 조건으로 RUNS 번 채점. 각 run 의 확정 태그 목록과 부가 정보를 돌려준다."""
+    """한 조건으로 RUNS 번 채점 (API 호출). 모델의 원래 응답(raw)을 run 별로 돌려준다.
+    plain/guide 는 run 하나에 응답 1개, vote 는 run 하나에 응답 N_SAMPLES 개."""
     task = Task(**item["task"])
     args = (item["mode"], task, item["medium"], item["relationship"], item["answer"])
-    codes = codes_for_mode(item["mode"])
-    runs, usage = [], {}
+    raw, usage = [], {}
 
     if condition in ("plain", "guide"):
         prompt = plain_grade_prompt(*args) if condition == "plain" else grade_prompt(*args)
         samples, usage = llm.grade_samples(prompt, item["mode"], RUNS)
-        for s in samples:
-            runs.append(combine(item["answer"], [s], codes))
+        raw = [[s] for s in samples]
     else:  # vote
         for _ in range(RUNS):
             samples, u = llm.grade_samples(grade_prompt(*args), item["mode"], llm.N_SAMPLES)
             llm._add_usage(usage, u)
-            runs.append(combine(item["answer"], samples, codes))
-    return runs, usage
+            raw.append(samples)
+    return raw, usage
+
+
+def combine_runs(item, raw):
+    """원래 응답에 코드 검증·다수결을 적용 (API 호출 없음). 검증 규칙이 바뀌면 여기만 다시 돌리면 된다."""
+    codes = codes_for_mode(item["mode"])
+    return [combine(item["answer"], samples, codes) for samples in raw]
 
 
 def tags_of(run):
@@ -100,6 +107,8 @@ def score_item(item, runs):
         "extra_tags": extra / len(runs),
         "type_sets": [sorted(s) for s in type_sets],
         "untagged_changes": sum(len(r["untagged_changes"]) for r in runs),
+        "merged_tags": sum(len(r["merged_tags"]) for r in runs),
+        "dropped_width": sum(r["dropped_width"] for r in runs),
         "dropped_quotes": sum(r["dropped_quotes"] for r in runs),
     }
 
@@ -117,6 +126,8 @@ def aggregate(scores):
         "clean_tags": sum(s["extra_tags"] for s in clean) / len(clean) if clean else None,
         "extra_tags": sum(s["extra_tags"] for s in with_errors) / len(with_errors) if with_errors else None,
         "untagged_changes": sum(s["untagged_changes"] for s in scores),
+        "merged_tags": sum(s["merged_tags"] for s in scores),
+        "dropped_width": sum(s["dropped_width"] for s in scores),
         "dropped_quotes": sum(s["dropped_quotes"] for s in scores),
     }
 
@@ -133,6 +144,23 @@ def per_type_agreement(scores):
     return {t: {"any": a, "all": b, "rate": b / a} for t, (a, b) in sorted(table.items())}
 
 
+def build_condition(entries, usage):
+    """entries: [(평가 항목, 원래 응답 raw)]. 코드 검증·다수결·지표 계산을 모두 여기서 한다."""
+    scores = []
+    for item, raw in entries:
+        score = score_item(item, combine_runs(item, raw))
+        score["item"] = item                                           # 재채점용
+        score["raw"] = [[g.model_dump() for g in run] for run in raw]  # 모델의 원래 응답
+        scores.append(score)
+    by_mode = {}
+    for mode in ("grammar", "expression"):
+        ms = [s for s in scores if s["mode"] == mode]
+        if ms:
+            by_mode[mode] = aggregate(ms)
+    return {"all": aggregate(scores), "by_mode": by_mode,
+            "per_type": per_type_agreement(scores), "usage": usage, "items": scores}
+
+
 def fmt(x):
     return "-" if x is None else f"{x:.2f}"
 
@@ -141,49 +169,51 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--only", help="이 id 하나만 실행")
     parser.add_argument("--conditions", default="plain,guide,vote")
+    parser.add_argument("--rescore", help="저장된 결과 파일의 원래 응답으로 다시 채점 (API 호출 없음)")
     args = parser.parse_args()
 
-    items = load_eval_set()
-    if args.only:
-        items = [i for i in items if i["id"] == args.only]
-    conditions = args.conditions.split(",")
-
-    report = {
-        "date": datetime.now().astimezone().isoformat(timespec="seconds"),
-        "model": llm.GRADER_MODEL, "thinking_level": llm.GRADER_THINKING,
-        "n_samples_vote": llm.N_SAMPLES, "runs": RUNS,
-        "taxonomy_version": TAXONOMY_VERSION, "prompt_version": PROMPT_VERSION,
-        "conditions": {},
-    }
-    for cond in conditions:
-        scores, usage = [], {}
-        for item in items:
-            print(f"[{cond}] {item['id']} ...", flush=True)
-            runs, u = run_condition(item, cond)
-            llm._add_usage(usage, u)
-            scores.append(score_item(item, runs))
-        by_mode = {}
-        for mode in ("grammar", "expression"):
-            ms = [s for s in scores if s["mode"] == mode]
-            if ms:
-                by_mode[mode] = aggregate(ms)
-        report["conditions"][cond] = {
-            "all": aggregate(scores), "by_mode": by_mode,
-            "per_type": per_type_agreement(scores), "usage": usage, "items": scores,
+    if args.rescore:
+        old = json.loads(Path(args.rescore).read_text(encoding="utf-8"))
+        report = {k: v for k, v in old.items() if k != "conditions"}
+        report.update(rescored_at=datetime.now().astimezone().isoformat(timespec="seconds"),
+                      rescored_from=Path(args.rescore).name, conditions={})
+        for cond, data in old["conditions"].items():
+            entries = [(s["item"], [[GradeResult(**g) for g in run] for run in s["raw"]])
+                       for s in data["items"]]
+            report["conditions"][cond] = build_condition(entries, data["usage"])
+        name = Path(args.rescore).stem + "_rescored.json"
+    else:
+        items = load_eval_set()
+        if args.only:
+            items = [i for i in items if i["id"] == args.only]
+        report = {
+            "date": datetime.now().astimezone().isoformat(timespec="seconds"),
+            "provider": llm.PROVIDER, "model": llm.GRADER_MODEL, "reasoning": llm.GRADER_REASONING,
+            "n_samples_vote": llm.N_SAMPLES, "runs": RUNS,
+            "taxonomy_version": TAXONOMY_VERSION, "prompt_version": PROMPT_VERSION,
+            "conditions": {},
         }
+        for cond in args.conditions.split(","):
+            entries, usage = [], {}
+            for item in items:
+                print(f"[{cond}] {item['id']} ...", flush=True)
+                raw, u = run_condition(item, cond)
+                llm._add_usage(usage, u)
+                entries.append((item, raw))
+            report["conditions"][cond] = build_condition(entries, usage)
+        name = datetime.now().strftime("repro_%Y%m%d_%H%M%S") + (f"_{args.only}" if args.only else "") + ".json"
 
     out_dir = HERE / "results"
     out_dir.mkdir(exist_ok=True)
-    name = datetime.now().strftime("repro_%Y%m%d_%H%M%S") + (f"_{args.only}" if args.only else "") + ".json"
     (out_dir / name).write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
 
     print(f"\n결과: experiments/results/{name}\n")
-    print("| 조건 | 모드 | 완전일치 | Jaccard | 위치 탐지율 | 유형까지 일치 | 무오류 답의 태그 | 기대 밖 태그 |")
-    print("|---|---|---|---|---|---|---|---|")
+    print("| 조건 | 모드 | 완전일치 | Jaccard | 위치 탐지율 | 유형까지 일치 | 무오류 답의 태그 | 기대 밖 태그 | 합침 경고 |")
+    print("|---|---|---|---|---|---|---|---|---|")
     for cond, data in report["conditions"].items():
         for mode, a in [("전체", data["all"])] + list(data["by_mode"].items()):
             print(f"| {cond} | {mode} | {fmt(a['exact'])} | {fmt(a['jaccard'])} | {fmt(a['recall_loc'])} "
-                  f"| {fmt(a['recall_type'])} | {fmt(a['clean_tags'])} | {fmt(a['extra_tags'])} |")
+                  f"| {fmt(a['recall_type'])} | {fmt(a['clean_tags'])} | {fmt(a['extra_tags'])} | {a['merged_tags']} |")
 
 
 if __name__ == "__main__":

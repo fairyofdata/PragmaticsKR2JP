@@ -7,7 +7,7 @@ n번 중 과반에서 나온 지적만 확정, 나머지는 참고(낮은 확신
 from collections import Counter
 
 from .schemas import VotedTag
-from .verify import find_span, untagged_changes
+from .verify import find_span, merged_edits, untagged_changes, width_only
 
 
 def _overlaps(a, b):
@@ -19,8 +19,9 @@ def combine(answer, samples, allowed_codes):
     n = len(samples)
     threshold = n // 2 + 1
     dropped = 0
+    dropped_width = 0
 
-    # 1) 원문에 없는 인용, 허용되지 않은 유형은 버린다 (검증 D)
+    # 1) 원문에 없는 인용, 허용되지 않은 유형은 버린다 (검증 D). 전각/반각 차이뿐인 태그도 버린다.
     valid = []  # 샘플별 [(tag, span)]
     for sample in samples:
         kept = []
@@ -28,6 +29,8 @@ def combine(answer, samples, allowed_codes):
             span = find_span(answer, tag.original)
             if span is None or tag.type not in allowed_codes:
                 dropped += 1
+            elif width_only(tag.original, tag.corrected):
+                dropped_width += 1
             else:
                 kept.append((tag, span))
         valid.append(kept)
@@ -79,5 +82,10 @@ def combine(answer, samples, allowed_codes):
         "untagged_changes": untagged_changes(answer, chosen.minimal_correction,
                                              confirmed + tentative),
         "dropped_quotes": dropped,
+        "dropped_width": dropped_width,
+        # 검증 E2: 태그 하나에 서로 다른 단어의 수정이 합쳐진 것 (확정 태그만)
+        "merged_tags": [{"type": t.type, "original": t.original, "corrected": t.corrected,
+                         "edits": merged_edits(t.original, t.corrected)}
+                        for t in confirmed if merged_edits(t.original, t.corrected)],
         "n_samples": n,
     }

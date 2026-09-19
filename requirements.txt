@@ -3,3 +3,4 @@ google-genai==2.24.0
 pydantic==2.13.5
 python-dotenv==1.2.3
 pytest==9.1.1
+openai==3.16.2

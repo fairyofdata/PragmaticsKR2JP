@@ -5,7 +5,7 @@ from datetime import date
 from coach.schemas import ErrorTag, GradeResult
 from coach.stats import streak_days, top_types
 from coach.taxonomy import codes_for_mode
-from coach.verify import untagged_changes
+from coach.verify import merged_edits, untagged_changes
 from coach.voting import combine
 
 ANSWER = "昨日友達を合いました。"
@@ -64,6 +64,27 @@ def test_majority_vote():
 def test_type_outside_mode_is_dropped():
     samples = [result([tag("REGISTER", "を", "に")])]    # 표현 모드 유형을 문법 모드에서
     assert combine(ANSWER, samples, GRAMMAR)["dropped_quotes"] == 1
+
+
+# ---- 전각/반각, 합침 검출 ----
+
+def test_width_only_tag_is_dropped_and_not_untagged():
+    answer, fixed = "了解です!", "了解です！"
+    out = combine(answer, [result([tag("ORTHOGRAPHY", "!", "！")], fixed)], GRAMMAR)
+    assert out["errors"] == [] and out["dropped_width"] == 1
+    assert out["untagged_changes"] == []
+
+
+def test_merged_tag_is_reported():
+    samples = [result([tag("PARTICLE", "友達を合い", "友達に会い")])] * 3
+    out = combine(ANSWER, samples, GRAMMAR)
+    assert out["merged_tags"][0]["edits"] == [{"original": "を", "corrected": "に"},
+                                              {"original": "合", "corrected": "会"}]
+
+
+def test_okurigana_and_keigo_are_not_merged():
+    for a, b in [("薬を食べて", "薬を飲んで"), ("連絡しました", "ご連絡いたしました")]:
+        assert merged_edits(a, b) == []
 
 
 # ---- 집계 ----

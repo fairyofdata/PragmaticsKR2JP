@@ -6,7 +6,7 @@ few-shot 방침: 답 전체를 보여주는 예시는 넣지 않는다 (주제·
 
 from .taxonomy import ERROR_TYPES, MODES, OUT_OF_MODE, codes_for_mode
 
-PROMPT_VERSION = "p0"
+PROMPT_VERSION = "p1"  # p0 → p1: 태그 분리 규칙 추가 (+ 유형표 v1 의 경계 문구)
 
 # 주제별로 코드가 고르는 장면 (매체, 관계). LLM이 아니라 코드가 정하므로 분포를 통제할 수 있다.
 TOPICS = {
@@ -68,6 +68,8 @@ def grade_prompt(mode, task, medium, relationship, answer):
 - original: 사용자 답에 **글자 그대로** 있는 부분을 복사한다. 고친 형태로 인용하지 않는다.
   빠진 말(조사 누락 등)은 바로 앞뒤 단어를 포함해서 인용한다.
 - 오류 한 곳에 태그 하나. 두 유형에 걸치면 유형표에서 위쪽 유형을 고른다.
+- 태그 하나에 오류 하나. 붙어 있는 두 오류(예: 조사와 바로 뒤 동사의 한자)를 한 태그로 합치지 말고
+  각각의 original/corrected 로 나눈다. original 은 그 오류에 필요한 최소 범위만 인용한다.
 - severity: error = 문법적으로 틀림 / unnatural = 문법은 맞지만 원어민이 쓰지 않는 표현.
 - kr_interference: 한국어를 그대로 옮긴 것이 원인으로 보이면 true.
 - explanation_ko: 한국어로 1~2문장. 왜 틀렸는지와 올바른 쓰임.
