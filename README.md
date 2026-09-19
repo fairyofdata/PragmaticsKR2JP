@@ -158,6 +158,7 @@ coach/verify.py         끌려가지 않기 검증 D·E·E2
 coach/voting.py         3회 채점 다수결
 coach/stats.py          집계 (순수 함수)
 experiments/            평가 세트, 실험 스크립트, 결과
+docs/adr/               설계 결정 기록 (왜 이렇게 만들었나)
 samples/                시연용 합성 예시 (커밋)
 data/                   실제 기록 JSONL (git 제외, 추가만 함)
 ```
