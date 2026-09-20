@@ -7,7 +7,8 @@ n번 중 과반에서 나온 지적만 확정, 나머지는 참고(낮은 확신
 from collections import Counter
 
 from .schemas import VotedTag
-from .verify import find_span, merged_edits, untagged_changes, width_only
+from .lang_ja import non_error_diff
+from .verify import find_span, merged_edits, untagged_changes
 
 
 def _overlaps(a, b):
@@ -45,7 +46,7 @@ def combine(answer, samples, allowed_codes):
             span = find_span(answer, tag.original)
             if span is None or tag.type not in allowed_codes:
                 dropped += 1
-            elif width_only(tag.original, tag.corrected):
+            elif non_error_diff(tag.original, tag.corrected):
                 dropped_width += 1
             else:
                 kept.append((tag, span))

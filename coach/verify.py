@@ -2,76 +2,15 @@
 
 D. 인용 검증: 태그의 original 이 사용자 답에 글자 그대로 있는가
 E. 누락 검증: 원문 → minimal_correction 에서 바뀐 곳이 모두 태그로 덮였는가
-E2. 합침 검출: 태그 하나에 서로 다른 수정이 여러 개 들어 있는가 (한 오류가 다른 오류에 묻히는 것 방지)
+E2. 합침 검출: 태그 하나에 서로 다른 단어의 수정이 여러 개 들어 있는가 (한 오류가 다른 오류에 묻히는 것 방지)
+
+이 파일은 언어를 모른다. 단어를 나누는 일과 "이 차이는 오류가 아니다"라는 판단은 `lang_ja.py` 가 한다.
 """
 
 import difflib
 import html
-import unicodedata
 
-
-def width_only(a, b):
-    """두 문자열이 전각/반각 같은 '모양'만 다른가. (NFKC = 모양만 다른 글자를 하나로 맞추는 유니코드 표준 변환)
-    원문 저장에는 쓰지 않고, 비교할 때만 쓴다."""
-    return a != b and unicodedata.normalize("NFKC", a) == unicodedata.normalize("NFKC", b)
-
-
-def _script(ch):
-    if "぀" <= ch <= "ゟ":
-        return "hiragana"
-    if "゠" <= ch <= "ヿ":
-        return "katakana"
-    if "一" <= ch <= "鿿" or ch == "々":
-        return "kanji"
-    return "other"
-
-
-def _pieces(text):
-    """히라가나 뒤에 한자·가타카나가 오면 새 단어가 시작된 것으로 보고 자른다.
-    'を合' → ['を', '合'] (조사 + 다음 단어) / '食べ' → ['食べ'] (한자 + 오쿠리가나는 한 단어)"""
-    pieces = []
-    for ch in text:
-        new_word = (pieces and _script(pieces[-1][-1]) == "hiragana"
-                    and _script(ch) in ("kanji", "katakana"))
-        if not pieces or new_word:
-            pieces.append(ch)
-        else:
-            pieces[-1] += ch
-    return pieces
-
-
-def split_edits(original, corrected):
-    """태그 하나 안에 들어 있는 수정들을 나눈다.
-
-    한 덩어리로 바뀐 곳이라도 양쪽이 같은 모양의 조각으로 나뉘면
-    (예: 'を合'→'に会' = 조사+한자 / 조사+한자) 서로 다른 단어를 고친 것으로 본다.
-    """
-    edits = []
-    for _, _, a_part, b_part in changed_regions(original, corrected):
-        a_pcs, b_pcs = _pieces(a_part), _pieces(b_part)
-        same_shape = (len(a_pcs) == len(b_pcs) > 1
-                      and [_script(p[0]) for p in a_pcs] == [_script(p[0]) for p in b_pcs])
-        if same_shape:
-            edits.extend((a, b) for a, b in zip(a_pcs, b_pcs) if a != b)
-        else:
-            edits.append((a_part, b_part))
-    return [{"original": a, "corrected": b} for a, b in edits if not width_only(a, b)]
-
-
-def _has_kanji(text):
-    return any(_script(ch) == "kanji" for ch in text)
-
-
-def merged_edits(original, corrected):
-    """태그 하나에 서로 다른 단어의 수정이 합쳐져 있으면 그 수정 목록, 아니면 빈 목록.
-
-    경고 조건(오탐을 줄이려고 좁게 잡음): 양쪽이 모두 비어 있지 않은 수정이 2개 이상이고,
-    그중 하나는 한자를 한자로 바꾼 것. 경어처럼 글자를 끼워 넣기만 한 수정(連絡→ご連絡)은 제외된다.
-    """
-    edits = [e for e in split_edits(original, corrected) if e["original"] and e["corrected"]]
-    if len(edits) >= 2 and any(_has_kanji(e["original"]) and _has_kanji(e["corrected"]) for e in edits):
-        return edits
-    return []
+from .lang_ja import non_error_diff, tokenize_chunks
 
 
 def find_span(answer, original):
@@ -106,6 +45,32 @@ def changed_regions(answer, corrected):
     return regions
 
 
+def word_edits(original, corrected):
+    """두 문자열의 차이를 '바뀐 단어' 단위로 센다."""
+    a, b = tokenize_chunks(original), tokenize_chunks(corrected)
+    pairs = []
+    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(a=a, b=b, autojunk=False).get_opcodes():
+        if op == "equal":
+            continue
+        a_part, b_part = a[i1:i2], b[j1:j2]
+        if len(a_part) == len(b_part):
+            pairs.extend((x, y) for x, y in zip(a_part, b_part) if x != y)
+        else:
+            # 개수가 달라 짝지을 수 없으면 한 덩어리로 본다 (連絡しました → ご連絡いたしました)
+            pairs.append(("".join(a_part), "".join(b_part)))
+    return [{"original": x, "corrected": y} for x, y in pairs if not non_error_diff(x, y)]
+
+
+def merged_edits(original, corrected):
+    """태그 하나에 서로 다른 단어의 수정이 합쳐져 있으면 그 목록, 아니면 빈 목록.
+
+    양쪽이 모두 비어 있지 않은 수정이 2개 이상일 때만 경고한다.
+    (경어로 글자를 끼워 넣기만 한 수정 連絡→ご連絡 은 한 단어 안의 일이라 경고하지 않는다)
+    """
+    edits = [e for e in word_edits(original, corrected) if e["original"] and e["corrected"]]
+    return edits if len(edits) >= 2 else []
+
+
 def untagged_changes(answer, corrected, tags):
     """태그 없이 조용히 고친 곳 목록.
 
@@ -122,8 +87,8 @@ def untagged_changes(answer, corrected, tags):
 
     result = []
     for i1, i2, a_part, b_part in changed_regions(answer, corrected):
-        if width_only(a_part, b_part):
-            continue  # 전각/반각 차이는 오류가 아니다
+        if non_error_diff(a_part, b_part):
+            continue
         if i1 == i2:
             # 삽입: 길이 0인 지점. 태그 범위 안이나 경계면 덮인 것으로 본다.
             if not any(s <= i1 <= e for s, e in spans):

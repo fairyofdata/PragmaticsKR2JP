@@ -5,6 +5,7 @@ from datetime import date
 from coach.schemas import ErrorTag, GradeResult
 from coach.stats import streak_days, top_types
 from coach.taxonomy import codes_for_mode
+from coach.lang_ja import non_error_diff
 from coach.verify import merged_edits, untagged_changes
 from coach.voting import combine
 
@@ -76,10 +77,21 @@ def test_width_only_tag_is_dropped_and_not_untagged():
 
 
 def test_merged_tag_is_reported():
-    samples = [result([tag("PARTICLE", "友達を合い", "友達に会い")])] * 3
-    out = combine(ANSWER, samples, GRAMMAR)
-    assert out["merged_tags"][0]["edits"] == [{"original": "を", "corrected": "に"},
-                                              {"original": "合", "corrected": "会"}]
+    samples = [result([tag("PARTICLE", "友達を合って", "友達に会って")])] * 3
+    out = combine("昨日友達を合って帰りました。", samples, GRAMMAR)
+    assert out["merged_tags"][0]["edits"] == [{"original": "友達を", "corrected": "友達に"},
+                                              {"original": "合って", "corrected": "会って"}]
+
+
+def test_merged_tag_without_kanji_change():
+    # 한자가 바뀌지 않아도 서로 다른 두 단어가 고쳐졌으면 경고한다
+    assert len(merged_edits("駅を書けた", "駅に書いた")) == 2
+
+
+def test_half_width_katakana_is_a_real_error():
+    # 폭 차이라고 뭉뚱그리면 안 되는 표기 오류
+    assert not non_error_diff("ｻｰﾊﾞｰ", "サーバー")
+    assert non_error_diff("！", "!") and non_error_diff("　", " ")
 
 
 def test_merged_warning_skipped_when_other_tag_covers_it():

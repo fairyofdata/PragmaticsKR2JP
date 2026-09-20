@@ -37,10 +37,12 @@ An LLM is the same kind of probabilistic model as speech recognition: it reads a
 | C | Separate the minimal correction from the natural rewrite | Correction and polishing blurring together |
 | D | **Verify each quoted span exists verbatim in the answer** | Quoting an already-corrected form |
 | E | **Verify every changed character is covered by some tag** | Silent corrections (surfaced as a warning) |
-| E2 | **Detect two different words fixed inside one tag** (`を合→に会`) | One error buried inside another |
+| E2 | **Detect two or more different words fixed inside one tag** (`友達を合って→友達に会って`) | One error buried inside another |
 | F | Measure detection rate on an eval set with planted errors | Turning "it works well" into a number |
 
-Overcorrection — the opposite failure — is measured too: how many tags land on answers that contain no errors. Half-width vs full-width punctuation differences are never errors (compared via NFKC; storage stays verbatim).
+Overcorrection — the opposite failure — is measured too: how many tags land on answers that contain no errors. Width differences in punctuation, spaces, digits and Latin letters are never errors; half-width katakana (`ｻｰﾊﾞｰ→サーバー`) is a real orthography error and is kept.
+
+Everything language-specific lives in [coach/lang_ja.py](coach/lang_ja.py), which exposes exactly two functions — `tokenize_chunks` (SudachiPy when installed, a script-based approximation otherwise) and `non_error_diff`. [coach/verify.py](coach/verify.py), voting and aggregation know nothing about Japanese.
 
 ### 3. Variance is handled by voting, not temperature
 
@@ -76,7 +78,7 @@ Every tag also carries a "Korean transfer" flag. Each task carries a medium (ema
 | vote | grammar | 0.67 | 0.85 | **1.00** | 0.58 | 0.00 | 0.07 |
 | vote | expression | 0.67 | 0.82 | 0.74 | 0.67 | 1.00 | 0.20 |
 
-The earlier run (p0, taxonomy v0) is in `experiments/results/repro_20260920_031543.json`; see [README_kr.md](README_kr.md) for both tables and the full analysis.
+Both tables predate the word-level E2 check and the narrowed width rule, which were generalized afterwards; those runs did not keep the raw model output, so they cannot be recomputed (later runs can, via `--rescore`). The earlier run (p0, taxonomy v0) is in `experiments/results/repro_20260920_031543.json`; see [README_kr.md](README_kr.md) for both tables and the full analysis.
 
 **What the experiment changed**
 1. Prompt rules were **not** reliably followed — "split merged tags" was obeyed once out of three times, "half-width `!?` is not an error" was mostly ignored. Both rules moved into code checks (E2 and the width filter). The project's own principle — block it in code, don't ask the model — is what the experiment supports.
@@ -132,7 +134,8 @@ app.py                  Streamlit UI
 coach/taxonomy.py       error taxonomy v1 (order = priority)
 coach/prompts.py        task and grading prompts
 coach/llm.py            the only place that calls an LLM
-coach/verify.py         anti-drag checks D, E, E2
+coach/verify.py         anti-drag checks D, E, E2 (language-agnostic)
+coach/lang_ja.py        Japanese layer: word chunking, non-error differences
 coach/voting.py         3-way majority voting
 coach/stats.py          aggregation (pure functions)
 experiments/            eval set, experiment script, results (raw model output kept)
@@ -144,7 +147,6 @@ data/                   your own records, JSONL, append-only (git-ignored)
 ## Next steps
 
 - Surface edits the model makes only in the natural rewrite (e.g. `その→あの`)
-- Generalize the merged-tag check (E2) to word level with a morphological analyzer (SudachiPy)
 - Rebuild the eval set from the user's real translations, labeled typo vs. misconception, reviewed by a native speaker, 30+ items ([ADR 0007](docs/adr/0007-eval-set-from-user-translations.md))
 - Dynamic few-shot: retrieve past cases of the same error type once records accumulate
 - Out of scope for now: speech input, scheduled tests, spaced repetition, more charts, login, deployment

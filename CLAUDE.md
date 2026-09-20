@@ -25,8 +25,8 @@
 - C. minimal_correction(오류만) / natural_version(장면에 맞는 문장)을 분리.
 - D. 태그의 original 이 원문에 글자 그대로 있는지 코드가 검증 (`coach/verify.py`, `coach/voting.py`).
 - E. 원문 → minimal_correction 의 바뀐 글자가 모두 태그로 덮였는지 코드가 검증 (미태깅 수정은 화면·기록에 드러냄).
-- E2. 태그 하나에 다른 단어의 수정이 합쳐졌는지 코드가 검출 (`を合→に会`: 조사 태그 하나에 한자 변환 실수가 묻힘). 좁은 규칙이라 놓치는 경우 있음.
-- 전각/반각 차이만 있는 수정은 오류가 아니다 (비교할 때만 NFKC 사용, 저장은 원문 그대로).
+- E2. 태그 하나에서 서로 다른 **단어**가 2개 이상 고쳐졌는지 코드가 검출 (`友達を合って→友達に会って`). 단어 나누기는 `coach/lang_ja.py`.
+- 문장부호·공백·숫자·영문의 전각/반각 차이만 있는 수정은 오류가 아니다. 반각 가타카나(`ｻｰﾊﾞｰ`)는 표기 오류로 남긴다. 저장은 원문 그대로.
 - F. 오류를 심은 평가 세트로 탐지율 측정 (`experiments/`).
 - 교훈: 프롬프트 규칙(태그 분리, 반각 허용)은 모델이 안정적으로 따르지 않았다. 지킬 수 있는 규칙은 코드로 옮긴다.
 - 반대 방향 실패(과교정)도 막는다: "오류 없음"이 정상 결과, 무오류 답에 붙는 태그 수를 측정.
@@ -53,7 +53,8 @@
 ## 구조
 - `app.py` Streamlit 화면 (연습 / 요약)
 - `coach/llm.py` LLM 호출은 여기에만 (제공자 교체 지점)
-- `coach/verify.py`, `coach/voting.py`, `coach/stats.py` LLM 없는 순수 코드. `tests/` 로 검사
+- `coach/verify.py`, `coach/voting.py`, `coach/stats.py` LLM 없는 순수 코드, **언어 무관**. `tests/` 로 검사
+- `coach/lang_ja.py` 일본어 지식은 여기에만 (단어 나누기, 오류가 아닌 차이). 다른 언어는 같은 두 함수를 가진 파일을 추가
 - `experiments/` 재현성·탐지율 실험, 평가 세트, 결과
 - `data/` 실제 기록 (gitignore, append-only) / `samples/` 시연용 합성 예시 (커밋)
 
@@ -76,7 +77,8 @@
   2. 사용자와 상의해 오류마다 origin(typo / misconception / unsure) 확정.
   3. 유형별 건수를 세어 0건 유형을 겨냥한 2차 글 선정.
   4. 평가 세트 v2 작성 (오류 없는 문장 30% 이상) → 앱 채점과 비교 → README 에 v1 결과와 나란히.
-- 그 뒤: 프롬프트 p2 (G1 모양 예시 문구 제거), E2 를 SudachiPy 로 일반화, natural_version 에서만 조용히 고친 곳 드러내기.
+- 그 뒤: 프롬프트 p2 (G1 모양 예시 문구 제거), natural_version 에서만 조용히 고친 곳 드러내기.
+- 완료(ADR 0008): 언어 층 분리, E2 단어 단위 일반화(SudachiPy), 전각/반각 규칙 축소. **README 실험 표는 이 변경 이전 숫자** — 다음 실험 때 갱신 필요.
 
 ## 명령
 - 실행: `.venv\Scripts\streamlit run app.py`
