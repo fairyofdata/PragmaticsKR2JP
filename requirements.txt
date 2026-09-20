@@ -4,3 +4,4 @@ pydantic==2.13.5
 python-dotenv==1.2.3
 pytest==9.1.1
 openai==3.16.2
+playwright==1.63.0  # 스크린샷 생성용 (앱 실행에는 불필요)

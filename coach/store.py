@@ -1,10 +1,12 @@
 """JSONL 저장소. 한 줄에 시도 한 건. 추가(append)만 하고 수정·삭제는 하지 않는다."""
 
 import json
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-DATA_FILE = ROOT / "data" / "attempts.jsonl"
+# 기본 저장 위치. COACH_DATA_FILE 로 바꿀 수 있다 (스크린샷 생성 등에서 실제 기록을 건드리지 않으려고).
+DATA_FILE = Path(os.getenv("COACH_DATA_FILE", ROOT / "data" / "attempts.jsonl"))
 SAMPLES_FILE = ROOT / "samples" / "attempts.jsonl"
 
 
