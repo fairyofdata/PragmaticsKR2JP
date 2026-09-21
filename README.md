@@ -24,7 +24,7 @@ One goal: **catch the wrong thing as the wrong thing** — and accumulate that i
 
 - We ask for categorical tags, never numeric scores: LLM judges are noisy on open numeric scales and steadier on concrete categorical calls.
 - Still, each individual error call **is** an LLM measurement. "We aggregated deterministically, therefore it's objective" would be false. So the reliability (reproducibility) and validity (detection rate) of those annotations are measured and published below.
-- Records from different taxonomy / prompt / schema / model versions are never mixed in one aggregate.
+- By default, only records whose taxonomy, prompt, schema and model versions all match the current ones are aggregated. A sidebar toggle can include older records with the same taxonomy; the screen then shows the version mix. Different taxonomies are never mixed.
 
 ### 2. Don't get dragged
 
@@ -34,8 +34,8 @@ An LLM is the same kind of probabilistic model as speech recognition: it reads a
 |---|---|---|
 | A | Store the answer verbatim, no normalization | Errors disappearing at storage time |
 | B | Separate "what you meant" from "what is wrong" in the output | Waving an error through because the meaning is clear |
-| C | Separate the minimal correction from the natural rewrite | Correction and polishing blurring together |
-| D | **Verify each quoted span exists verbatim in the answer** | Quoting an already-corrected form |
+| C | Separate the minimal correction from the natural rewrite; the correction on screen is **built by code from confirmed tags only** | Correction and polishing blurring together; unconfirmed edits leaking into the correction |
+| D | **Verify each quoted span exists verbatim in the answer.** When the same string occurs several times (e.g. 「を」), code picks the position from context fields and the diff, and flags it if still ambiguous | Quoting an already-corrected form; two errors on repeated particles collapsing into one |
 | E | **Verify every changed character is covered by some tag** | Silent corrections (surfaced as a warning) |
 | E2 | **Detect two or more different words fixed inside one tag** (`友達を合って→友達に会って`) | One error buried inside another |
 | F | Measure detection rate on an eval set with planted errors | Turning "it works well" into a number |
@@ -46,7 +46,7 @@ Everything language-specific lives in [coach/lang_ja.py](coach/lang_ja.py), whic
 
 ### 3. Variance is handled by voting, not temperature
 
-Each answer is graded 3 times. A finding counts as **confirmed** only if the same type overlapping the same span appears in at least 2 of the 3; single-run findings are shown as "low confidence" and excluded from the counts. Code does the merging. There are no fixed few-shot answer examples (they skew topics and types) — only one short contrast pair per type, unrelated to any task.
+Each answer is graded 3 times. A finding counts as **confirmed** only if the same type overlapping the same span appears in at least 2 of the 3; single-run findings are shown as "low confidence" and excluded from the counts. The summary shows, next to each type, how many findings were unanimous and how many were dropped as low confidence. Code does the merging. There are no fixed few-shot answer examples (they skew topics and types) — only one short contrast pair per type, unrelated to any task.
 
 ### 4. Two modes: grammar and expression
 
@@ -79,6 +79,8 @@ Every tag also carries a "Korean transfer" flag. Each task carries a medium (ema
 | vote | expression | 0.67 | 0.82 | 0.74 | 0.67 | 1.00 | 0.20 |
 
 Both tables predate the word-level E2 check and the narrowed width rule, which were generalized afterwards; those runs did not keep the raw model output, so they cannot be recomputed (later runs can, via `--rescore`). The earlier run (p0, taxonomy v0) is in `experiments/results/repro_20260920_031543.json`; see [README_kr.md](README_kr.md) for both tables and the full analysis.
+
+**Current state:** the app now runs prompt p2 / schema s2 (position resolution for repeated quotes, code-built correction — [ADR 0009](docs/adr/0009-quote-resolution-version-filter.md)). A single live check passed, but the full p2 experiment is on hold until the eval set is rebuilt from real translations ([ADR 0007](docs/adr/0007-eval-set-from-user-translations.md)). The cost below is from p1; the p2 check cost about $0.04 per grading (context fields and more reasoning tokens).
 
 **What the experiment changed**
 1. Prompt rules were **not** reliably followed — "split merged tags" was obeyed once out of three times, "half-width `!?` is not an error" was mostly ignored. Both rules moved into code checks (E2 and the width filter). The project's own principle — block it in code, don't ask the model — is what the experiment supports.
@@ -119,6 +121,7 @@ copy .env.example .env        # put in OPENAI_API_KEY (or GEMINI_API_KEY + LLM_P
 - Practice tab: pick mode and topic in the sidebar → get a task → write in Japanese → grade.
 - Summary tab: top 5 error types per mode with real examples. Choose demo samples (`samples/`), your own records (`data/`), or both.
 - A streak counter can be switched on in the sidebar (off by default). No quotas, no target scores.
+- The bundled demo samples were produced with prompt p1. Under the default strict version filter they are hidden; switch on **"이전 버전 기록도 포함"** (include older records) in the sidebar to see them.
 
 ```powershell
 .venv\Scripts\python -m pytest -q                    # code checks, voting, aggregation (no API)
