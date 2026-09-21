@@ -2,11 +2,11 @@
 
 from datetime import date
 
-from coach.schemas import ErrorTag, GradeResult
-from coach.stats import streak_days, top_types
+from coach.schemas import ErrorTag, GradeResult, VotedTag
+from coach.stats import filter_records, streak_days, top_types
 from coach.taxonomy import codes_for_mode
 from coach.lang_ja import non_error_diff
-from coach.verify import merged_edits, untagged_changes
+from coach.verify import apply_tags, find_span, merged_edits, untagged_changes
 from coach.voting import combine
 
 ANSWER = "昨日友達を合いました。"
@@ -19,6 +19,10 @@ def tag(type_, original, corrected):
                     kr_interference=False, explanation_ko="")
 
 
+def spans(answer, *originals):
+    return [find_span(answer, o) for o in originals]
+
+
 def result(tags, correction=FIXED):
     return GradeResult(intended_meaning_ko="", minimal_correction=correction,
                        natural_version=correction, errors=tags)
@@ -27,20 +31,18 @@ def result(tags, correction=FIXED):
 # ---- 검증 E: 태그 없이 고친 곳 ----
 
 def test_untagged_change_is_detected():
-    tags = [tag("PARTICLE", "を", "に")]          # 合→会 는 태그 없이 고침
-    missing = untagged_changes(ANSWER, FIXED, tags)
+    missing = untagged_changes(ANSWER, FIXED, spans(ANSWER, "を"))   # 合→会 는 태그 없이 고침
     assert missing == [{"original": "合", "corrected": "会"}]
 
 
 def test_all_changes_tagged():
-    tags = [tag("PARTICLE", "を", "に"), tag("ORTHOGRAPHY", "合い", "会い")]
-    assert untagged_changes(ANSWER, FIXED, tags) == []
+    assert untagged_changes(ANSWER, FIXED, spans(ANSWER, "を", "合い")) == []
 
 
 def test_insertion_next_to_tag_is_covered():
     # 조사 누락: 앞 단어를 포함해 인용하면 삽입 지점이 덮인다
     answer, fixed = "東京行きます", "東京に行きます"
-    assert untagged_changes(answer, fixed, [tag("PARTICLE", "東京", "東京に")]) == []
+    assert untagged_changes(answer, fixed, spans(answer, "東京")) == []
 
 
 # ---- 검증 D + 다수결 ----
@@ -65,6 +67,66 @@ def test_majority_vote():
 def test_type_outside_mode_is_dropped():
     samples = [result([tag("REGISTER", "を", "に")])]    # 표현 모드 유형을 문법 모드에서
     assert combine(ANSWER, samples, GRAMMAR)["dropped_quotes"] == 1
+
+
+# ---- 같은 인용이 답에 여러 번 나올 때 (외부 리뷰 1번) ----
+
+DUP_ANSWER = "友達を会って、映画を見るを好きです。"
+DUP_FIXED = "友達に会って、映画を見るのが好きです。"
+
+
+def test_same_quote_twice_keeps_both_errors():
+    # 「を」가 세 번 나온다. 첫 번째(→に)와 세 번째(→のが)가 서로 다른 오류다.
+    tags = [tag("PARTICLE", "を", "に"), tag("PARTICLE", "を", "のが")]
+    out = combine(DUP_ANSWER, [result(tags, DUP_FIXED)] * 3, GRAMMAR)
+    assert len(out["errors"]) == 2
+    assert sorted((e.start, e.corrected) for e in out["errors"]) == [(2, "に"), (12, "のが")]
+
+
+def test_untagged_change_not_hidden_by_same_quote_elsewhere():
+    # 첫 번째 「を」만 태그했는데, 세 번째 「を」도 고쳐졌다 → 그건 태그 없는 수정으로 드러나야 한다
+    out = combine(DUP_ANSWER, [result([tag("PARTICLE", "を", "に")], DUP_FIXED)], GRAMMAR)
+    assert out["untagged_changes"] == [{"original": "を", "corrected": "のが"}]
+
+
+def ctx_tag(original, corrected, before, after=""):
+    t = tag("PARTICLE", original, corrected)
+    return t.model_copy(update={"context_before": before, "context_after": after})
+
+
+def test_context_picks_the_right_occurrence():
+    # 두 「を」가 똑같이 →に 로 고쳐져서 교정문만으로는 구별할 수 없다 → 문맥(앞 글자)으로 정한다
+    answer, fixed = "駅を着いて、家を着いた。", "駅に着いて、家に着いた。"
+    tags = [ctx_tag("を", "に", "家"), ctx_tag("を", "に", "駅")]
+    out = combine(answer, [result(tags, fixed)] * 3, GRAMMAR)
+    assert sorted(e.start for e in out["errors"]) == [1, 7]
+    assert out["ambiguous_quotes"] == 0
+
+
+def test_ambiguous_quote_is_reported():
+    # 문맥도 없고 교정도 똑같으면 위치를 하나로 못 정한다 → 모호로 드러낸다
+    answer, fixed = "駅を着いて、家を着いた。", "駅に着いて、家に着いた。"
+    out = combine(answer, [result([tag("PARTICLE", "を", "に")], fixed)], GRAMMAR)
+    assert out["ambiguous_quotes"] == 1
+
+
+# ---- 확정 태그로 만든 교정문 (외부 리뷰 3번) ----
+
+def test_confirmed_correction_uses_only_confirmed_tags():
+    # 3번 중 1번만 나온 ORTHOGRAPHY(合→会)는 확정이 아니므로 교정문에 들어가지 않는다
+    particle, ortho = tag("PARTICLE", "を", "に"), tag("ORTHOGRAPHY", "合", "会")
+    samples = [result([particle, ortho]), result([particle]), result([particle])]
+    out = combine(ANSWER, samples, GRAMMAR)
+    assert out["confirmed_correction"] == "昨日友達に合いました。"
+    assert out["correction_source"] == "confirmed_tags"
+
+
+def test_apply_tags_nested_and_conflict():
+    outer = VotedTag(**tag("PARTICLE", "友達を合い", "友達に会い").model_dump(), votes=3, start=2, end=7)
+    inner = VotedTag(**tag("ORTHOGRAPHY", "合い", "会い").model_dump(), votes=3, start=5, end=7)
+    assert apply_tags(ANSWER, [outer, inner]) == FIXED          # 안쪽은 바깥에 포함 → 바깥만 적용
+    clash = VotedTag(**tag("ORTHOGRAPHY", "合い", "逢い").model_dump(), votes=3, start=5, end=7)
+    assert apply_tags(ANSWER, [outer, clash]) is None           # 서로 다른 교정 → 충돌
 
 
 # ---- 전각/반각, 합침 검출 ----
@@ -123,6 +185,26 @@ def test_top_types_counts_attempts_not_occurrences():
     ranked = top_types(records)
     assert [(r["code"], r["attempts_with"], r["count"]) for r in ranked] == [
         ("PARTICLE", 2, 2), ("CONJUGATION", 1, 5)]
+
+
+def test_top_types_reports_confidence():
+    r = record("2026-09-20T10:00:00+09:00", ["PARTICLE", "PARTICLE"])
+    r["n_samples"] = 3
+    r["errors"][0]["votes"], r["errors"][1]["votes"] = 3, 2
+    r["tentative_errors"] = [{"type": "PARTICLE"}]
+    t = top_types([r])[0]
+    assert (t["unanimous"], round(t["mean_vote_share"], 2), t["tentative"]) == (1, 0.83, 1)
+
+
+def test_filter_records_strict_by_default():
+    current = {"taxonomy_version": "v1", "prompt_version": "p2", "schema_version": "s2", "model": "m"}
+    base = {"mode": "grammar", "taxonomy_version": "v1", "schema_version": "s2", "model": "m"}
+    now = {**base, "prompt_version": "p2"}
+    older = {**base, "prompt_version": "p1"}
+    other_taxonomy = {**now, "taxonomy_version": "v0"}
+    records = [now, older, other_taxonomy]
+    assert filter_records(records, "grammar", current) == [now]
+    assert filter_records(records, "grammar", current, include_older=True) == [now, older]  # 유형표가 다르면 여전히 제외
 
 
 def test_top_types_is_deterministic_on_ties():

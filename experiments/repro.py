@@ -108,6 +108,7 @@ def score_item(item, runs):
         "type_sets": [sorted(s) for s in type_sets],
         "untagged_changes": sum(len(r["untagged_changes"]) for r in runs),
         "merged_tags": sum(len(r["merged_tags"]) for r in runs),
+        "ambiguous_quotes": sum(r["ambiguous_quotes"] for r in runs),
         "dropped_width": sum(r["dropped_width"] for r in runs),
         "dropped_quotes": sum(r["dropped_quotes"] for r in runs),
     }
@@ -127,6 +128,7 @@ def aggregate(scores):
         "extra_tags": sum(s["extra_tags"] for s in with_errors) / len(with_errors) if with_errors else None,
         "untagged_changes": sum(s["untagged_changes"] for s in scores),
         "merged_tags": sum(s["merged_tags"] for s in scores),
+        "ambiguous_quotes": sum(s.get("ambiguous_quotes", 0) for s in scores),
         "dropped_width": sum(s["dropped_width"] for s in scores),
         "dropped_quotes": sum(s["dropped_quotes"] for s in scores),
     }
@@ -208,12 +210,12 @@ def main():
     (out_dir / name).write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
 
     print(f"\n결과: experiments/results/{name}\n")
-    print("| 조건 | 모드 | 완전일치 | Jaccard | 위치 탐지율 | 유형까지 일치 | 무오류 답의 태그 | 기대 밖 태그 | 합침 경고 |")
-    print("|---|---|---|---|---|---|---|---|---|")
+    print("| 조건 | 모드 | 완전일치 | Jaccard | 위치 탐지율 | 유형까지 일치 | 무오류 답의 태그 | 기대 밖 태그 | 합침 경고 | 모호 인용 |")
+    print("|---|---|---|---|---|---|---|---|---|---|")
     for cond, data in report["conditions"].items():
         for mode, a in [("전체", data["all"])] + list(data["by_mode"].items()):
             print(f"| {cond} | {mode} | {fmt(a['exact'])} | {fmt(a['jaccard'])} | {fmt(a['recall_loc'])} "
-                  f"| {fmt(a['recall_type'])} | {fmt(a['clean_tags'])} | {fmt(a['extra_tags'])} | {a['merged_tags']} |")
+                  f"| {fmt(a['recall_type'])} | {fmt(a['clean_tags'])} | {fmt(a['extra_tags'])} | {a['merged_tags']} | {a['ambiguous_quotes']} |")
 
 
 if __name__ == "__main__":

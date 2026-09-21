@@ -74,6 +74,7 @@ def _strict(schema):
 
     def fix(node):
         if isinstance(node, dict):
+            node.pop("default", None)  # strict 모드는 기본값 표기를 받지 않는다 (모든 필드를 필수로 받음)
             if node.get("type") == "object" and "properties" in node:
                 node["additionalProperties"] = False
                 node["required"] = list(node["properties"])

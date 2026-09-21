@@ -8,7 +8,7 @@ from collections import Counter
 
 from .schemas import VotedTag
 from .lang_ja import non_error_diff
-from .verify import find_span, merged_edits, untagged_changes
+from .verify import apply_tags, changed_regions, merged_edits, resolve_span, untagged_changes
 
 
 def _overlaps(a, b):
@@ -37,19 +37,26 @@ def combine(answer, samples, allowed_codes):
     threshold = n // 2 + 1
     dropped = 0
     dropped_width = 0
+    ambiguous = 0
 
-    # 1) 원문에 없는 인용, 허용되지 않은 유형은 버린다 (검증 D). 전각/반각 차이뿐인 태그도 버린다.
+    # 1) 태그마다 원문의 위치를 하나로 정한다 (resolve_span).
+    #    원문에 없는 인용, 허용되지 않은 유형은 버린다 (검증 D). 전각/반각 차이뿐인 태그도 버린다.
     valid = []  # 샘플별 [(tag, span)]
     for sample in samples:
+        changed = [(i1, i2, b) for i1, i2, a, b in changed_regions(answer, sample.minimal_correction)
+                   if not non_error_diff(a, b)]
+        taken = set()
         kept = []
         for tag in sample.errors:
-            span = find_span(answer, tag.original)
+            span, is_ambiguous = resolve_span(answer, tag, changed, taken)
             if span is None or tag.type not in allowed_codes:
                 dropped += 1
             elif non_error_diff(tag.original, tag.corrected):
                 dropped_width += 1
             else:
                 kept.append((tag, span))
+                taken.add(span)
+                ambiguous += is_ambiguous
         valid.append(kept)
 
     # 2) 같은 지적끼리 묶기
@@ -89,17 +96,24 @@ def combine(answer, samples, allowed_codes):
 
     confirmed.sort(key=lambda t: t.start)
     tentative.sort(key=lambda t: t.start)
+
+    # 5) 화면의 교정문은 확정 태그만 원문에 적용해 코드가 만든다 (오류 목록과 항상 일치).
+    #    태그끼리 겹쳐 충돌하면 샘플 교정문으로 대신하고 그 사실을 기록한다.
+    built = apply_tags(answer, confirmed)
     return {
         "intended_meaning_ko": chosen.intended_meaning_ko,
         "minimal_correction": chosen.minimal_correction,
         "natural_version": chosen.natural_version,
+        "confirmed_correction": built if built is not None else chosen.minimal_correction,
+        "correction_source": "confirmed_tags" if built is not None else "sample_fallback",
         "errors": confirmed,
         "tentative_errors": tentative,
         # 검증 E: 어느 샘플도 태그하지 않았는데 교정문에서 바뀐 곳
         "untagged_changes": untagged_changes(answer, chosen.minimal_correction,
-                                             confirmed + tentative),
+                                             [(t.start, t.end) for t in confirmed + tentative]),
         "dropped_quotes": dropped,
         "dropped_width": dropped_width,
+        "ambiguous_quotes": ambiguous,
         # 검증 E2: 태그 하나에 서로 다른 단어의 수정이 합쳐진 것 (확정 태그만)
         "merged_tags": _merged_tags(confirmed),
         "n_samples": n,

@@ -86,8 +86,8 @@ Both tables predate the word-level E2 check and the narrowed width rule, which w
 3. A new drag path appeared: for `その→あの` the model left the minimal correction alone and silently fixed it only in the natural rewrite. Not yet blocked — see Next steps.
 
 **Conclusions (12 items — a small sample)**
-1. **Grammar mode does not get dragged**: every planted error span was found (1.00, in both runs). Expression mode is 0.74–0.89 — the same direction as prior work reporting LLMs are strong on surface correction and weak on pragmatics.
-2. **The codebook prompt clearly beats a plain instruction**: type accuracy 0.49 → 0.67–0.71, unexpected tags 0.97 → 0.10–0.27.
+1. **Grammar mode does not get dragged**: in p1 both guide and vote found every planted error span (1.00); in p0, guide 0.96 and vote 1.00. Expression mode in p1 is plain 0.93 / guide 0.81 / vote 0.74 — lower than grammar mode, and lower the more guidance is added (apparently the price of fewer unexpected tags). Same direction as prior work reporting LLMs are strong on surface correction and weak on pragmatics.
+2. **The codebook prompt clearly beats a plain instruction** (compared within one run, all items): in p1, plain → guide moves type accuracy 0.49 → 0.71, unexpected tags 0.70 → 0.10, tags on clean answers 1.17 → 0.33. p0 points the same way (0.49 → 0.67, 0.97 → 0.27, 1.33 → 0.50).
 3. **3-way voting cannot be judged at this sample size.** A 0.1 difference is noise with 12 items. It is kept as the default because it attaches a confidence ("2 of 3") to every tag.
 4. **Agreement is still low** (exact 0.5–0.67). Spans are stable; the type label wobbles at category boundaries.
 

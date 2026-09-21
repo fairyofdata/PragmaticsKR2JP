@@ -7,7 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-SCHEMA_VERSION = "s1"  # s0 → s1: dropped_width, merged_tags 추가
+SCHEMA_VERSION = "s2"  # s0→s1: dropped_width, merged_tags / s1→s2: 인용 문맥, 모호 인용 수, 확정 태그 교정문
 
 
 # ---------- LLM이 돌려주는 것 ----------
@@ -21,6 +21,9 @@ class ErrorTag(BaseModel):
     type: str                                  # taxonomy 코드
     severity: Literal["error", "unnatural"]
     original: str                              # 사용자 답에 글자 그대로 있는 부분
+    # original 바로 앞뒤의 글자 (같은 문자열이 답에 여러 번 나올 때 위치를 정하려고). 문장 처음/끝이면 빈 문자열
+    context_before: str = ""
+    context_after: str = ""
     corrected: str
     kr_interference: bool
     explanation_ko: str
@@ -66,6 +69,9 @@ class Attempt(BaseModel):
     dropped_quotes: int                # 원문에 없는 인용이라 버린 태그 수
     dropped_width: int = 0             # 전각/반각 차이뿐이라 버린 태그 수 (s1~)
     merged_tags: list[dict] = []       # 태그 하나에 합쳐진 수정들 (s1~) [{type, original, corrected, edits}]
+    ambiguous_quotes: int = 0          # 위치를 하나로 정하지 못한 인용 수 (s2~)
+    confirmed_correction: str = ""     # 확정 태그만 원문에 적용해 코드가 만든 교정문 (s2~)
+    correction_source: str = ""        # confirmed_tags / sample_fallback (s2~)
     n_samples: int
     taxonomy_version: str
     prompt_version: str

@@ -6,7 +6,8 @@ few-shot 방침: 답 전체를 보여주는 예시는 넣지 않는다 (주제·
 
 from .taxonomy import ERROR_TYPES, MODES, OUT_OF_MODE, codes_for_mode
 
-PROMPT_VERSION = "p1"  # p0 → p1: 태그 분리 규칙 추가 (+ 유형표 v1 의 경계 문구)
+PROMPT_VERSION = "p2"  # p0→p1: 태그 분리 규칙 (+ 유형표 v1 경계 문구)
+                       # p1→p2: 인용 문맥(context_before/after) 추가, 평가 문항 G1 모양의 예시 문구 제거
 
 # 주제별로 코드가 고르는 장면 (매체, 관계). LLM이 아니라 코드가 정하므로 분포를 통제할 수 있다.
 TOPICS = {
@@ -68,8 +69,10 @@ def grade_prompt(mode, task, medium, relationship, answer):
 - original: 사용자 답에 **글자 그대로** 있는 부분을 복사한다. 고친 형태로 인용하지 않는다.
   빠진 말(조사 누락 등)은 바로 앞뒤 단어를 포함해서 인용한다.
 - 오류 한 곳에 태그 하나. 두 유형에 걸치면 유형표에서 위쪽 유형을 고른다.
-- 태그 하나에 오류 하나. 붙어 있는 두 오류(예: 조사와 바로 뒤 동사의 한자)를 한 태그로 합치지 말고
-  각각의 original/corrected 로 나눈다. original 은 그 오류에 필요한 최소 범위만 인용한다.
+- 태그 하나에 오류 하나. 서로 다른 단어에 걸친 수정은 한 태그로 합치지 말고 각각의 original/corrected 로 나눈다.
+  original 은 그 오류에 필요한 최소 범위만 인용한다.
+- context_before / context_after: original 바로 앞과 바로 뒤의 글자를 사용자 답에서 그대로 2~4자씩 복사한다.
+  같은 글자(예: 같은 조사)가 답에 여러 번 나올 때 어느 것인지 정하는 데 쓴다. 문장 처음이나 끝이면 빈 문자열.
 - severity: error = 문법적으로 틀림 / unnatural = 문법은 맞지만 원어민이 쓰지 않는 표현.
 - kr_interference: 한국어를 그대로 옮긴 것이 원인으로 보이면 true.
 - explanation_ko: 한국어로 1~2문장. 왜 틀렸는지와 올바른 쓰임.
