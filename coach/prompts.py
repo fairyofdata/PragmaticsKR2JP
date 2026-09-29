@@ -33,6 +33,26 @@ def task_prompt(topic, medium, relationship):
 """
 
 
+def targeted_task_prompt(target, medium, relationship):
+    """약점 겨냥 과제 (ADR 0013). 학습자가 반복해서 틀리는 표현을 '쓰지 않고는 완성하기 어려운' 상황을 만든다.
+    채점 프롬프트(측정 도구)와는 별개라 PROMPT_VERSION 에 영향이 없다. 겨냥한 패턴은 기록의 target 에 남는다."""
+    from .taxonomy import name_ko
+    wrong, right = target["edit"].split(" → ")
+    where = f" ({target['governing']} 와 함께 쓸 때)" if target["governing"] else ""
+    return f"""당신은 일본에서 일하는 한국인 엔지니어를 위한 일본어 작문 과제를 냅니다.
+이 학습자가 반복해서 틀리는 표현을 자연스럽게 쓰게 되는 과제를 만드세요.
+
+반복되는 오류 ({name_ko(target['type'])}): 학습자는 「{wrong}」처럼 쓰지만 맞는 것은 「{right}」{where}.
+매체: {medium}
+상대와의 관계: {relationship}
+
+조건:
+- situation_ko: 한국어로 상황을 2~3문장으로. 그 표현을 쓰지 않고는 과제를 완성하기 어렵도록 구체적인 장면을 준다.
+- instruction_ko: 일본어로 무엇을 써야 하는지 한국어로 1~2문장. 분량은 일본어 1~4문장 정도.
+- 오류나 정답을 암시하는 말(조사, 동사, 문법 용어, 일본어)을 절대 쓰지 않는다. 한국어로만 쓴다.
+"""
+
+
 def _codebook(mode):
     lines = []
     for code in codes_for_mode(mode):

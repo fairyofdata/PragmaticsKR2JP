@@ -104,6 +104,11 @@ def changed_regions(answer, corrected):
     return regions
 
 
+def similarity(a, b):
+    """두 문자열이 글자 단위로 얼마나 같은가 (0~1). 통째로 다시 쓴 글인지 가늠할 때 쓴다."""
+    return difflib.SequenceMatcher(a=a, b=b, autojunk=False).ratio()
+
+
 def word_edits(original, corrected):
     """두 문자열의 차이를 '바뀐 단어' 단위로 센다."""
     a, b = tokenize_chunks(original), tokenize_chunks(corrected)
@@ -168,6 +173,49 @@ def untagged_changes(answer, corrected, spans):
         else:
             result.append({"original": a_part, "corrected": b_part})
     return result
+
+
+def check_revision(answer, rewrite, tags):
+    """고쳐 쓴 답에서 확정 오류가 고쳐졌는지 코드로 확인한다 (LLM 없음). tags: 확정 태그 dict 목록.
+
+    태그마다 결과 하나:
+      unchanged — 그 자리가 원래 답 그대로다 (안 고침)
+      fixed     — 그 자리가 바뀌었고, 바뀐 곳 근처에 교정(corrected)이 들어 있다
+      changed   — 바뀌었지만 교정과 다르게 고쳤다. 다른 맞는 표현일 수도, 여전히 틀렸을 수도 있다 → 다시 채점으로 확인
+    """
+    matcher = difflib.SequenceMatcher(a=answer, b=rewrite, autojunk=False)
+    ops = [op for op in matcher.get_opcodes() if op[0] != "equal"]
+
+    def touches(s, e, i1, i2):
+        return (s <= i1 <= e) if i1 == i2 else (s < i2 and i1 < e)
+
+    results = []
+    for tag in tags:
+        s, e, fix = tag["start"], tag["end"], tag["corrected"]
+        near = [(j1, j2) for _, i1, i2, j1, j2 in ops if touches(s, e, i1, i2)]
+        if not near:
+            status = "unchanged"
+        else:
+            j1, j2 = min(j for j, _ in near), max(j for _, j in near)
+            # 교정이 앞뒤 글자를 포함하는 경우(東京→東京に)도 있어서, 바뀐 곳을 교정 길이만큼 넓혀서 본다
+            window = rewrite[max(0, j1 - len(fix)):j2 + len(fix)]
+            ok = (fix in window) if fix else (tag["original"] not in window)
+            status = "fixed" if ok else "changed"
+        results.append(status)
+    return results
+
+
+def highlight_html(answer, spans):
+    """화면용: 틀린 자리만 표시하고 교정은 보여주지 않는다 (고쳐 쓰기에서 스스로 고치게 하려고)."""
+    out, pos = [], 0
+    for s, e in sorted(spans):
+        if s < pos:
+            continue
+        out.append(html.escape(answer[pos:s]))
+        out.append('<mark style="background:#ffe08a">' + html.escape(answer[s:e]) + "</mark>")
+        pos = e
+    out.append(html.escape(answer[pos:]))
+    return "".join(out)
 
 
 def diff_html(answer, corrected):

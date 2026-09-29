@@ -3,6 +3,7 @@
 - attempts.jsonl : 시도 한 건 = 한 줄
 - labels.jsonl   : 태그에 대한 사용자 판정 한 건 = 한 줄. 판정을 바꾸면 새 줄을 추가하고, 읽을 때 마지막 줄이 이긴다.
                    (시도 기록을 고치지 않고도 판정을 바꿀 수 있게 따로 둔다)
+- revisions.jsonl: 고쳐 쓰기 한 건 = 한 줄. 다시 채점하면 같은 id 로 새 줄 (마지막 줄이 이긴다). 집계에는 넣지 않는다.
 """
 
 import json
@@ -44,6 +45,19 @@ def load(path):
             if line.strip():
                 records.append(json.loads(line))
     return records
+
+
+def revisions_file():
+    return DATA_FILE.parent / "revisions.jsonl"
+
+
+def append_revision(revision, path=None):
+    _append_line(path or revisions_file(), revision.model_dump_json())
+
+
+def load_revisions(path=None):
+    """{고쳐 쓰기 id: 기록}. 다시 채점하면 같은 id 로 새 줄이 붙으므로 마지막 것이 이긴다."""
+    return {row["id"]: row for row in load(path or revisions_file())}
 
 
 def append_label(key, label, path=None):

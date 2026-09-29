@@ -6,25 +6,33 @@
 import os
 import random
 import time
+import uuid
+from datetime import datetime
 
 import streamlit as st
 from dotenv import load_dotenv
 
-from coach import store
-from coach.corpus import LABELS, EXCLUDED_LABELS, excluded_keys, frequent_patterns, tag_rows, unlabeled
+from coach import llm, store
+from coach.corpus import (EXCLUDED_LABELS, LABELS, excluded_keys, frequent_patterns,
+                          repeated_after_revision, revision_summary, tag_rows, target_candidates,
+                          target_outcome, target_summary, unlabeled)
 from coach.prompts import PROMPT_VERSION, TOPICS
-from coach.schemas import SCHEMA_VERSION
+from coach.schemas import SCHEMA_VERSION, Revision, RevisionCheck
 from coach.stats import (filter_records, streak_days, summary_counts, tag_key, top_types,
                          version_mix, weekly_trend)
 from coach.taxonomy import MODES, OUT_OF_MODE, TAXONOMY_VERSION, name_ko
-from coach.verify import diff_html
+from coach.verify import check_revision, diff_html, highlight_html, similarity, word_edits
 
 load_dotenv()
 st.set_page_config(page_title="일본어 작문 코치", page_icon="✍️", layout="centered")
 
-INPUT_KINDS = {"generated": "앱이 낸 과제", "own_korean": "내 한국어 문장"}
+INPUT_KINDS = {"generated": "앱이 낸 과제", "own_korean": "내 한국어 문장", "targeted": "약점 겨냥 연습"}
+REVISION_STATUS = {"fixed": "고침", "unchanged": "그대로 (안 고침)", "changed": "다르게 고침 (다시 채점으로 확인)"}
+TARGET_OUTCOME = {"repeated": "또 틀림", "used": "맞게 씀", "not_used": "이번 답에서 그 표현을 쓰지 않음"}
 MEDIUMS = ["메일", "채팅", "구두"]
 RELATIONSHIPS = sorted({rel for scenes in TOPICS.values() for _, rel in scenes})
+# 자연스러운 문장이 교정문과 글자 기준으로 이보다 덜 비슷하면 '사실상 다시 쓴 글'로 보고 하이라이트하지 않는다
+NATURAL_HINT_MIN_SIMILARITY = 0.6
 
 # ---------- 사이드바 ----------
 with st.sidebar:
@@ -33,7 +41,7 @@ with st.sidebar:
     st.divider()
     source = st.radio("요약에 쓸 기록", ["내 기록", "시연용 예시", "둘 다"], index=2)
     include_older = st.toggle("이전 버전 기록도 포함", value=False,
-                              help="기본은 유형표·프롬프트·스키마·모델이 모두 현재와 같은 기록만 집계합니다. "
+                              help="기본은 측정 도구(유형표·채점 프롬프트·모델)가 모두 현재와 같은 기록만 집계합니다. "
                                    "켜면 유형표만 같은 기록을 함께 집계하고, 섞인 버전 구성을 보여줍니다.")
     show_streak = st.toggle("연속 사용일 표시", value=False)
 
@@ -47,6 +55,22 @@ def load_records():
     if source in ("시연용 예시", "둘 다"):
         records += store.load(store.SAMPLES_FILE)
     return records
+
+
+CURRENT = {"taxonomy_version": TAXONOMY_VERSION, "prompt_version": PROMPT_VERSION, "model": llm.GRADER_MODEL}
+
+
+def split_records(all_records):
+    """집계 대상(측정)과 약점 겨냥 연습을 나눈다. 겨냥 연습은 특정 오류를 유도하는 과제라서
+    빈출 오답·상위 5개·추이에 넣으면 그 유형의 비율이 인위적으로 올라간다 (ADR 0013)."""
+    measured = filter_records(all_records, mode, CURRENT, include_older)
+    return ([r for r in measured if r.get("input_mode") != "targeted"],
+            [r for r in measured if r.get("input_mode") == "targeted"])
+
+
+def pattern_text(p):
+    target = f" (… {p['governing']})" if p["governing"] else ""
+    return f"{name_ko(p['type'])} · {p['edit']}{target}"
 
 
 @st.cache_data(max_entries=8)
@@ -87,6 +111,14 @@ def show_result(r):
         st.caption("이전 형식의 기록입니다. 채점 3회 중 하나의 교정문이라 확정되지 않은 수정이 섞여 있을 수 있습니다.")
     st.markdown("**이 장면에서 자연스러운 문장** (참고, 채점 1회분의 다시 쓰기)")
     st.info(r["natural_version"])
+    # 최소 교정에서는 넘겼지만 자연스러운 문장에서만 바꾼 곳 (예: その→あの). 오류로 확정된 게 아니라 집계에는 넣지 않는다.
+    hints = word_edits(corrected, r["natural_version"])
+    if hints and similarity(corrected, r["natural_version"]) >= NATURAL_HINT_MIN_SIMILARITY:
+        with st.expander(f"표현 참고: 교정문과 자연스러운 문장이 다른 곳 {len(hints)}군데 (집계 제외)"):
+            st.markdown(diff_html(corrected, r["natural_version"]), unsafe_allow_html=True)
+            st.caption("오류로 확정되지는 않았지만, 이 장면이라면 원어민은 이렇게 쓸 수 있다는 차이입니다.")
+    elif hints:
+        st.caption("자연스러운 문장은 교정문을 크게 다시 쓴 것이라 차이 표시는 생략합니다.")
     st.caption(f"해석된 뜻: {r['intended_meaning_ko']}")
 
     in_mode = [e for e in r["errors"] if e["type"] != OUT_OF_MODE]
@@ -126,11 +158,87 @@ def show_result(r):
         st.caption(f"원문에 없는 인용이라 버린 태그: {r['dropped_quotes']}건")
 
 
-def start_task(task, topic_name, medium, relationship, input_mode, source_ko=""):
-    """새 과제를 시작한다. 이전 답과 결과는 지우고, 걸린 시간을 재기 시작한다."""
+def confirmed_tags(r):
+    return [e for e in r["errors"] if "start" in e]
+
+
+def revision_entry(r):
+    """결과 아래의 '고쳐 쓰기' 시작 버튼."""
+    if not confirmed_tags(r):
+        return
+    st.divider()
+    st.markdown("**고쳐 쓰기**")
+    st.caption("교정을 가리고 틀린 곳만 표시한 채로 다시 써 봅니다. 교정은 읽기만 할 때보다 직접 고쳐 쓸 때 오래 남습니다. "
+               "고쳐 쓴 답은 피드백을 본 뒤라 집계에는 넣지 않습니다.")
+    if st.button("교정 가리고 다시 쓰기"):
+        st.session_state.update(revising=r["id"], revision_text=r["answer"],
+                                revision_started=time.time(), revision=None)
+        st.rerun()
+
+
+def revision_view(r):
+    """고쳐 쓰기 화면: 교정은 가리고 틀린 자리와 유형만 보여준다 → 확인(코드, 무료) → 선택적으로 다시 채점."""
+    tags = confirmed_tags(r)
+    st.markdown("**고쳐 쓰기** — 교정은 가려 두었습니다. 표시된 곳을 스스로 고쳐 보세요.")
+    st.markdown(highlight_html(r["answer"], [(e["start"], e["end"]) for e in tags]), unsafe_allow_html=True)
+    st.caption("표시된 곳의 유형: " + " · ".join(f"{i}. {name_ko(e['type'])}" for i, e in enumerate(tags, 1)))
+    text = st.text_area("고쳐 쓴 답", key="revision_text", height=150)
+
+    if st.button("확인", type="primary", disabled=not text.strip()):
+        statuses = check_revision(r["answer"], text, tags)
+        rev = Revision(
+            id=uuid.uuid4().hex[:12], parent_id=r["id"],
+            timestamp=datetime.now().astimezone().isoformat(timespec="seconds"), text=text,
+            duration_sec=int(time.time() - st.session_state.get("revision_started", time.time())),
+            checks=[RevisionCheck(key=tag_key(r["id"], e), type=e["type"], original=e["original"],
+                                  corrected=e["corrected"], status=s) for e, s in zip(tags, statuses)],
+            schema_version=SCHEMA_VERSION)
+        store.append_revision(rev)
+        st.session_state.revision = rev.model_dump()
+
+    rev = st.session_state.get("revision")
+    if rev and rev["parent_id"] == r["id"]:
+        st.markdown("**확인 결과** (코드로 확인, 교정은 이제 보여 드립니다)")
+        for c in rev["checks"]:
+            st.markdown(f"- {REVISION_STATUS[c['status']]} · [{name_ko(c['type'])}] "
+                        f"`{c['original']}` → 교정 `{c['corrected']}`")
+        if not rev["regraded"]:
+            st.caption("'다르게 고침'은 다른 맞는 표현일 수도, 여전히 틀렸을 수도 있습니다. "
+                       "다시 채점하면 고쳐 쓰면서 새로 생긴 오류까지 확인합니다.")
+            if st.button(f"다시 채점 ({llm.N_SAMPLES}회, 약 $0.04)"):
+                with st.spinner("다시 채점하는 중..."):
+                    regrade = llm.grade(rev["text"], st.session_state.task, mode, st.session_state.topic,
+                                        st.session_state.medium, st.session_state.relationship)
+                repeated = repeated_after_revision(r, [e.model_dump() for e in regrade.errors], rev["text"])
+                updated = Revision(**{**rev, "regraded": True, "regrade_errors": regrade.errors,
+                                      "repeated_patterns": repeated, "regrade_model": regrade.model,
+                                      "regrade_prompt_version": regrade.prompt_version, "usage": regrade.usage})
+                store.append_revision(updated)            # 같은 id 로 새 줄 (마지막 줄이 이긴다)
+                st.session_state.revision = updated.model_dump()
+                st.rerun()
+        else:
+            if rev["repeated_patterns"]:
+                st.warning("고쳐 쓰고도 또 틀린 패턴 — 실수가 아니라 잘못 알고 있을 가능성이 큽니다: "
+                           + ", ".join(f"`{pattern_text(p)}`" for p in rev["repeated_patterns"]))
+            others = [e for e in rev["regrade_errors"] if e["type"] != OUT_OF_MODE]
+            if others:
+                st.markdown("다시 채점에서 나온 오류")
+                for e in others:
+                    st.markdown(tag_line(e, llm.N_SAMPLES))
+            else:
+                st.success("다시 채점에서 확정된 오류가 없습니다.")
+
+    if st.button("교정 보기 (고쳐 쓰기 끝내기)"):
+        st.session_state.revising = None
+        st.rerun()
+
+
+def start_task(task, topic_name, medium, relationship, input_mode, source_ko="", target=None):
+    """새 과제를 시작한다. 이전 답·결과·고쳐 쓰기는 지우고, 걸린 시간을 재기 시작한다."""
     st.session_state.update(task=task, topic=topic_name, medium=medium, relationship=relationship,
-                            input_mode=input_mode, source_ko=source_ko, started_at=time.time(),
-                            result=None, answer_text="")
+                            input_mode=input_mode, source_ko=source_ko, target=target,
+                            started_at=time.time(), result=None, answer_text="",
+                            revising=None, revision=None)
 
 
 tab_practice, tab_summary = st.tabs(["연습", "요약"])
@@ -146,21 +254,37 @@ with tab_practice:
 
     if input_kind == "generated":
         if st.button("과제 받기", type="primary"):
-            from coach import llm
             medium, relationship = random.choice(TOPICS[topic])
             with st.spinner("과제를 만드는 중..."):
                 task = llm.generate_task(topic, medium, relationship)
             start_task(task, topic, medium, relationship, "generated")
-    else:
+    elif input_kind == "own_korean":
         st.caption("사전·번역기 없이 평소처럼 옮겨 주세요. 그래야 실제 약점이 기록됩니다.")
         source_ko = st.text_area("일본어로 옮길 한국어 문장", height=100, key="source_ko_input")
         col1, col2 = st.columns(2)
         medium = col1.selectbox("매체", MEDIUMS)
         relationship = col2.selectbox("상대", RELATIONSHIPS)
         if st.button("이 문장으로 시작", type="primary", disabled=not source_ko.strip()):
-            from coach import llm
             start_task(llm.own_korean_task(source_ko.strip(), medium, relationship),
                        "내 문장", medium, relationship, "own_korean", source_ko.strip())
+    else:  # targeted
+        st.caption("반복해서 틀리는 패턴을 쓰게 되는 과제를 받습니다. 겨냥 연습은 일부러 약점을 유도하므로 "
+                   "빈출 오답·상위 5개·추이에는 넣지 않고, 요약 탭에 따로 결과를 보여줍니다.")
+        measured, _ = split_records(load_records())
+        candidates = target_candidates(build_rows(measured, labels))
+        if not candidates:
+            st.info("겨냥할 패턴이 아직 없습니다. 빈출 오답이 생기거나 '몰랐음'으로 판정한 지적이 있으면 나타납니다.")
+        else:
+            idx = st.selectbox("겨냥할 패턴", range(len(candidates)),
+                               format_func=lambda i: f"{pattern_text(candidates[i])} — {candidates[i]['attempts']}번의 시도")
+            col1, col2 = st.columns(2)
+            medium = col1.selectbox("매체", MEDIUMS, key="target_medium")
+            relationship = col2.selectbox("상대", RELATIONSHIPS, key="target_relationship")
+            if st.button("겨냥 과제 받기", type="primary"):
+                target = {k: candidates[idx][k] for k in ("type", "edit", "governing")}
+                with st.spinner("과제를 만드는 중..."):
+                    task = llm.generate_targeted_task(target, medium, relationship)
+                start_task(task, "약점 겨냥", medium, relationship, "targeted", target=target)
 
     task = st.session_state.get("task")
     if task:
@@ -171,36 +295,43 @@ with tab_practice:
         answer = st.text_area("일본어로 쓰기", height=150, key="answer_text")
 
         if st.button("채점", disabled=not answer.strip()):
-            from coach import llm
             duration = int(time.time() - st.session_state.get("started_at", time.time()))
             with st.spinner(f"{llm.N_SAMPLES}번 채점해서 합치는 중..."):
                 attempt = llm.grade(answer, task, mode, st.session_state.topic,
                                     st.session_state.medium, st.session_state.relationship,
                                     input_mode=st.session_state.input_mode,
-                                    source_ko=st.session_state.source_ko, duration_sec=duration)
+                                    source_ko=st.session_state.source_ko, duration_sec=duration,
+                                    target=st.session_state.get("target"))
             store.append(attempt)
-            st.session_state.result = attempt.model_dump()
+            st.session_state.update(result=attempt.model_dump(), revising=None, revision=None)
 
-    if st.session_state.get("result"):
+    result = st.session_state.get("result")
+    if result:
         st.divider()
-        show_result(st.session_state.result)
+        if st.session_state.get("revising") == result["id"]:
+            revision_view(result)
+        else:
+            if result.get("target"):
+                outcome = target_outcome(result, result["target"])
+                box = st.error if outcome == "repeated" else st.success if outcome == "used" else st.info
+                box(f"겨냥한 패턴 `{pattern_text(result['target'])}`: {TARGET_OUTCOME[outcome]}")
+            show_result(result)
+            revision_entry(result)
 
 # ---------- 요약 ----------
 with tab_summary:
-    from coach import llm   # 현재 채점 모델 이름을 알기 위해 (API 호출은 하지 않음)
     all_records = load_records()
-    current = {"taxonomy_version": TAXONOMY_VERSION, "prompt_version": PROMPT_VERSION,
-               "schema_version": SCHEMA_VERSION, "model": llm.GRADER_MODEL}
-    records = filter_records(all_records, mode, current, include_older)
-    excluded = len(filter_records(all_records, mode, current, include_older=True)) - len(records)
+    records, targeted = split_records(all_records)
+    excluded = len(filter_records(all_records, mode, CURRENT, include_older=True)) - len(records) - len(targeted)
     st.subheader(MODES[mode])
-    st.caption(f"집계 기준: 유형표 {current['taxonomy_version']} · 프롬프트 {current['prompt_version']} · "
-               f"스키마 {current['schema_version']} · 모델 {current['model']}"
-               + (f" — 이전 버전 기록 {excluded}건 제외 (사이드바에서 포함 가능)" if excluded else ""))
+    st.caption(f"집계 기준 (측정 도구): 유형표 {CURRENT['taxonomy_version']} · 채점 프롬프트 {CURRENT['prompt_version']} · "
+               f"모델 {CURRENT['model']}"
+               + (f" — 이전 버전 기록 {excluded}건 제외 (사이드바에서 포함 가능)" if excluded else "")
+               + (f" · 약점 겨냥 연습 {len(targeted)}건은 아래 따로" if targeted else ""))
     if include_older:
         mix = version_mix(records)
         if len(mix) > 1:
-            parts = " / ".join(f"{p}·{s}·{m} {n}건" for (p, s, m), n in mix)
+            parts = " / ".join(f"{p}·{m} {n}건" for (p, m), n in mix)
             st.warning(f"서로 다른 측정 도구 버전의 기록이 섞여 있습니다: {parts}")
 
     if show_streak:
@@ -268,9 +399,20 @@ with tab_summary:
         if trend and codes:
             table = [{"주": t["week"], "시도": t["attempts"],
                       "걸린 시간(중앙값, 초)": t["median_sec"],
-                      **{name_ko(c): t["rates"][c] for c in codes}} for t in trend]
+                      **{name_ko(code): t["rates"][code] for code in codes}} for t in trend]
             st.dataframe(table, hide_index=True,
-                         column_config={name_ko(c): st.column_config.NumberColumn(format="percent") for c in codes})
+                         column_config={name_ko(code): st.column_config.NumberColumn(format="percent")
+                                        for code in codes})
+
+        # --- 고쳐 쓰기에서 드러난 것 ---
+        rev_summary = revision_summary(rows, list(store.load_revisions().values()))
+        if rev_summary:
+            st.markdown("### 고쳐 쓰기에서 드러난 것")
+            st.caption("틀린 자리를 알려 줬는데도 안 고쳐지거나, 다시 채점에서 또 틀린 패턴은 실수가 아니라 "
+                       "잘못 알고 있을 가능성이 큽니다. 고쳐 쓰기 자체는 집계에 넣지 않습니다.")
+            st.dataframe([{"패턴": pattern_text(p), "고침": p["fixed"], "그대로": p["unchanged"],
+                           "다르게 고침": p["changed"], "다시 채점에서 또 틀림": p["repeated"]}
+                          for p in rev_summary], hide_index=True)
 
         # --- 판정 대기 ---
         todo = unlabeled(rows)
@@ -281,3 +423,12 @@ with tab_summary:
                                 f"{row['topic']}  \n{row['explanation_ko']}")
                     st.caption(row["answer"])
                     label_control(row["key"], "summary")
+
+    # --- 약점 겨냥 연습 (집계와 분리) ---
+    if targeted:
+        st.markdown("### 약점 겨냥 연습")
+        st.caption("겨냥한 패턴을 이번엔 맞게 썼는지. '그 표현을 쓰지 않음'은 피해 간 것이라 맞게 쓴 것으로 치지 않습니다. "
+                   "이 연습은 특정 오류를 유도하므로 위의 빈출 오답·상위 5개·추이에는 넣지 않았습니다.")
+        st.dataframe([{"패턴": pattern_text(t), "시도": t["attempts"], "맞게 씀": t["used"],
+                       "또 틀림": t["repeated"], "쓰지 않음": t["not_used"]} for t in target_summary(targeted)],
+                     hide_index=True)

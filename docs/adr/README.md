@@ -17,6 +17,8 @@ ADR(Architecture Decision Record) = 중요한 설계 결정 하나를 "맥락 �
 | [0006](0006-taxonomy-v1-priority.md) | 유형표 v1: 더 구체적인 유형을 우선 | 채택 | 2026-09-20 |
 | [0007](0007-eval-set-from-user-translations.md) | 평가 세트를 사용자의 실제 번역에서 만든다 | 제안 (진행 중) | 2026-09-20 |
 | [0008](0008-language-layer-split.md) | 범용 검증 층과 일본어 층을 분리 | 채택 | 2026-09-20 |
-| [0009](0009-quote-resolution-version-filter.md) | 인용 위치 결정, 버전 필터, 확정 태그 교정문 (외부 리뷰) | 채택 | 2026-09-21 |
+| [0009](0009-quote-resolution-version-filter.md) | 인용 위치 결정, 버전 필터, 확정 태그 교정문 (외부 리뷰) | 채택, 버전 필터는 일부 대체 (→0012) | 2026-09-21 |
 | [0010](0010-personal-learner-corpus.md) | 개인 학습자 코퍼스: 빈출 오답, 오타 거르기, 사용자 판정 | 채택 | 2026-09-29 |
 | [0011](0011-weekly-trend.md) | 유형별 주간 추이 (비율, 걸린 시간 중앙값) | 채택 | 2026-09-30 |
+| [0012](0012-version-filter-measurement-only.md) | 버전 필터는 측정 도구만 본다 (스키마 제외) | 채택 | 2026-09-30 |
+| [0013](0013-learning-loop.md) | 학습 순환: 고쳐 쓰기, 약점 겨냥 연습, 표현 참고 | 채택 | 2026-09-30 |

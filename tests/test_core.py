@@ -6,7 +6,7 @@ from coach.schemas import ErrorTag, GradeResult, VotedTag
 from coach.stats import filter_records, streak_days, top_types
 from coach.taxonomy import codes_for_mode
 from coach.lang_ja import non_error_diff
-from coach.verify import apply_tags, find_span, merged_edits, untagged_changes
+from coach.verify import apply_tags, check_revision, find_span, merged_edits, untagged_changes
 from coach.voting import combine
 
 ANSWER = "昨日友達を合いました。"
@@ -129,6 +129,23 @@ def test_apply_tags_nested_and_conflict():
     assert apply_tags(ANSWER, [outer, clash]) is None           # 서로 다른 교정 → 충돌
 
 
+# ---- 고쳐 쓰기 확인 (ADR 0013) ----
+
+def test_check_revision_statuses():
+    answer = "友達を会って、映画を見るを好きです。"
+    tags = [{"start": 2, "end": 3, "original": "を", "corrected": "に"},
+            {"start": 12, "end": 13, "original": "を", "corrected": "のが"}]
+    assert check_revision(answer, "友達に会って、映画を見るのが好きです。", tags) == ["fixed", "fixed"]
+    assert check_revision(answer, "友達に会って、映画を見るを好きです。", tags) == ["fixed", "unchanged"]
+    assert check_revision(answer, "友達と会って、映画を見るのが好きです。", tags) == ["changed", "fixed"]
+
+
+def test_check_revision_insertion_error():
+    # 조사 누락: 태그가 앞 단어까지 인용(東京→東京に)해도 고친 것으로 본다
+    tags = [{"start": 0, "end": 2, "original": "東京", "corrected": "東京に"}]
+    assert check_revision("東京行きます", "東京に行きます", tags) == ["fixed"]
+
+
 # ---- 전각/반각, 합침 검출 ----
 
 def test_width_only_tag_is_dropped_and_not_untagged():
@@ -197,14 +214,15 @@ def test_top_types_reports_confidence():
 
 
 def test_filter_records_strict_by_default():
-    current = {"taxonomy_version": "v1", "prompt_version": "p2", "schema_version": "s2", "model": "m"}
+    current = {"taxonomy_version": "v1", "prompt_version": "p2", "model": "m"}
     base = {"mode": "grammar", "taxonomy_version": "v1", "schema_version": "s2", "model": "m"}
     now = {**base, "prompt_version": "p2"}
+    new_schema = {**now, "schema_version": "s3"}          # 저장 형식만 다름 → 측정 도구는 같으니 포함 (ADR 0012)
     older = {**base, "prompt_version": "p1"}
     other_taxonomy = {**now, "taxonomy_version": "v0"}
-    records = [now, older, other_taxonomy]
-    assert filter_records(records, "grammar", current) == [now]
-    assert filter_records(records, "grammar", current, include_older=True) == [now, older]  # 유형표가 다르면 여전히 제외
+    records = [now, new_schema, older, other_taxonomy]
+    assert filter_records(records, "grammar", current) == [now, new_schema]
+    assert filter_records(records, "grammar", current, include_older=True) == [now, new_schema, older]  # 유형표가 다르면 여전히 제외
 
 
 def test_top_types_is_deterministic_on_ties():

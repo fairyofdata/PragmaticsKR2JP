@@ -116,6 +116,98 @@ def frequent_patterns(rows, only_unknown=False, min_attempts=2, examples=3):
     return result
 
 
+def _same_pattern(p, q):
+    """같은 실수인가. 유형 이름은 채점마다 흔들릴 수 있어서(재현성 실험) '바뀐 기본형'과 '걸리는 말'만 비교한다."""
+    return p[1] == q[1] and p[2] == q[2]
+
+
+# ---------- 고쳐 쓰기 (ADR 0013) ----------
+
+def repeated_after_revision(parent, regrade_errors, rewrite):
+    """원래 시도에서 틀린 패턴이 고쳐 쓴 답의 다시 채점에서도 나왔나 → 고쳐 쓰고도 또 틀림 (오개념의 강한 신호)."""
+    before = [pattern_key(e, parent["answer"]) for e in parent["errors"]
+              if e["type"] != OUT_OF_MODE and "start" in e]
+    repeated = []
+    for e in regrade_errors:
+        if e["type"] == OUT_OF_MODE:
+            continue
+        p = pattern_key(e, rewrite)
+        if any(_same_pattern(p, b) for b in before) and p not in [tuple(r.values()) for r in repeated]:
+            repeated.append({"type": p[0], "edit": p[1], "governing": p[2]})
+    return repeated
+
+
+def revision_summary(rows, revisions):
+    """고쳐 쓰기 결과를 패턴별로 모은다: 고침 / 그대로 / 다르게 고침 / 다시 채점에서 또 틀림.
+    rows: 현재 집계 대상의 태그 행 (다른 버전의 시도에 붙은 고쳐 쓰기는 자연히 빠진다)."""
+    by_key = {row["key"]: row for row in rows}
+    summary = defaultdict(lambda: {"fixed": 0, "unchanged": 0, "changed": 0, "repeated": 0})
+    for rev in revisions:
+        for check in rev["checks"]:
+            row = by_key.get(check["key"])
+            if row:
+                summary[row["pattern"]][check["status"]] += 1
+        for p in rev.get("repeated_patterns", []):
+            for pattern in summary:
+                if _same_pattern(pattern, (p["type"], p["edit"], p["governing"])):
+                    summary[pattern]["repeated"] += 1
+                    break
+    result = [{"type": p[0], "edit": p[1], "governing": p[2], **counts} for p, counts in summary.items()]
+    # 안 고친 것·또 틀린 것이 많은 순 (고쳐 쓰기로도 안 고쳐지는 게 진짜 약점)
+    result.sort(key=lambda x: (-(x["unchanged"] + x["repeated"] + x["changed"]), x["edit"]))
+    return result
+
+
+# ---------- 약점 겨냥 연습 (ADR 0013) ----------
+
+def target_candidates(rows):
+    """겨냥할 패턴 후보: 빈출 오답 + '몰랐음'으로 판정한 패턴(한 번뿐이어도). 빈출 오답이 먼저."""
+    candidates = [{"type": p["type"], "edit": p["edit"], "governing": p["governing"], "attempts": p["attempts"]}
+                  for p in frequent_patterns(rows)]
+    for row in rows:
+        if row["label"] != "unknown":
+            continue
+        t, edit, gov = row["pattern"]
+        if not any(c["edit"] == edit and c["governing"] == gov for c in candidates):
+            candidates.append({"type": t, "edit": edit, "governing": gov, "attempts": 1})
+    return candidates
+
+
+def target_outcome(attempt, target):
+    """겨냥 연습 한 건의 결과.
+      repeated     — 겨냥한 패턴이 이번에도 확정 오류로 나왔다
+      used         — 이번 답에 맞는 형태(교정 쪽 기본형)가 들어 있고, 같은 오류는 없다
+      not_used     — 그 표현을 쓰지 않았다 (피해 갔거나 다르게 표현) → 맞게 썼다고 볼 수 없다
+    """
+    wanted = (target["type"], target["edit"], target["governing"])
+    for e in attempt["errors"]:
+        if e["type"] != OUT_OF_MODE and "start" in e and _same_pattern(pattern_key(e, attempt["answer"]), wanted):
+            return "repeated"
+    right = [x for x in target["edit"].split(" → ")[-1].split("·") if x != "∅"]
+    lemmas = [t[1] for t in analyze(attempt["answer"])]
+    # 맞는 형태가 걸리는 말 바로 앞에 '연속으로' 나와야 쓴 것으로 본다 (に…会う).
+    # 답 어딘가에 に 가 있고 어딘가에 会う 가 있는 것만으로는 안 된다 (一緒に … 会って を 로 잘못 판정하지 않게).
+    needle = right + ([target["governing"]] if target["governing"] else [])
+    n = len(needle)
+    used = n > 0 and any(lemmas[i:i + n] == needle for i in range(len(lemmas) - n + 1))
+    return "used" if used else "not_used"
+
+
+def target_summary(attempts):
+    """겨냥 연습 결과를 패턴별로: 시도 수와 repeated / used / not_used."""
+    summary = {}
+    for a in attempts:
+        t = a.get("target")
+        if not t:
+            continue
+        key = (t["type"], t["edit"], t["governing"])
+        entry = summary.setdefault(key, {"type": key[0], "edit": key[1], "governing": key[2],
+                                         "attempts": 0, "repeated": 0, "used": 0, "not_used": 0})
+        entry["attempts"] += 1
+        entry[target_outcome(a, t)] += 1
+    return sorted(summary.values(), key=lambda x: (-x["attempts"], x["edit"]))
+
+
 def unlabeled(rows, limit=20):
     """아직 판정하지 않은 태그 (최근 것부터)."""
     todo = [row for row in rows if row["label"] is None]

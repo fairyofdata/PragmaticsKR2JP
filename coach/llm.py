@@ -23,7 +23,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from pydantic import ValidationError
 
-from .prompts import PROMPT_VERSION, grade_prompt, task_prompt
+from .prompts import PROMPT_VERSION, grade_prompt, targeted_task_prompt, task_prompt
 from .schemas import SCHEMA_VERSION, Attempt, GradeResult, Task
 from .taxonomy import TAXONOMY_VERSION, codes_for_mode
 from .voting import combine
@@ -178,6 +178,13 @@ def grade_samples(prompt, mode, n):
     return samples, usage
 
 
+def generate_targeted_task(target, medium, relationship):
+    """약점 겨냥 과제 (ADR 0013)."""
+    text, _ = _call(TASK_MODEL, targeted_task_prompt(target, medium, relationship),
+                    Task.model_json_schema(), TASK_REASONING)
+    return Task.model_validate_json(text)
+
+
 def own_korean_task(source_ko, medium, relationship):
     """사용자가 가져온 한국어 문장을 과제로 만든다 (LLM 호출 없음). 채점 프롬프트는 그대로 쓴다."""
     return Task(situation_ko=f"다음 한국어를 일본어로 옮긴다.\n{source_ko}",
@@ -185,7 +192,7 @@ def own_korean_task(source_ko, medium, relationship):
 
 
 def grade(answer, task, mode, topic, medium, relationship, source="app", n_samples=None,
-          input_mode="generated", source_ko="", duration_sec=None):
+          input_mode="generated", source_ko="", duration_sec=None, target=None):
     """채점하고 다수결로 합친 Attempt 를 돌려준다 (저장은 호출한 쪽에서)."""
     n = n_samples or N_SAMPLES
     prompt = grade_prompt(mode, task, medium, relationship, answer)
@@ -201,6 +208,7 @@ def grade(answer, task, mode, topic, medium, relationship, source="app", n_sampl
         relationship=relationship,
         task=task,
         input_mode=input_mode,
+        target=target,
         source_ko=source_ko,
         duration_sec=duration_sec,
         answer=answer,

@@ -6,7 +6,9 @@ from datetime import date, timedelta
 from .taxonomy import OUT_OF_MODE, name_ko
 
 
-VERSION_KEYS = ("taxonomy_version", "prompt_version", "schema_version", "model")
+# 측정 도구의 버전 = 유형표·채점 프롬프트·모델. 이게 다르면 같은 답도 다르게 태깅될 수 있다.
+# 스키마(저장 형식)는 넣지 않는다: 필드 추가만으로 쌓아 둔 기록이 기본 화면에서 사라지면 안 된다 (ADR 0012).
+VERSION_KEYS = ("taxonomy_version", "prompt_version", "model")
 
 
 def tag_key(attempt_id, e):
@@ -17,7 +19,7 @@ def tag_key(attempt_id, e):
 def filter_records(records, mode, current, include_older=False):
     """집계에 넣을 기록을 고른다.
 
-    기본(엄격): 유형표·프롬프트·스키마·모델이 모두 현재(current)와 같은 기록만. 측정 도구가 바뀌면 분포도 바뀌므로 섞지 않는다.
+    기본(엄격): 유형표·채점 프롬프트·모델이 모두 현재(current)와 같은 기록만. 측정 도구가 바뀌면 분포도 바뀌므로 섞지 않는다.
     include_older=True: 유형표만 같으면 포함한다 (태그의 뜻은 같다). 이때는 화면에 섞인 버전 구성을 함께 보여준다.
     유형표가 다르면 태그의 뜻이 달라서 어느 경우에도 섞지 않는다.
     """
@@ -29,10 +31,10 @@ def filter_records(records, mode, current, include_older=False):
 
 
 def version_mix(records):
-    """기록들이 어떤 (프롬프트, 스키마, 모델) 조합으로 만들어졌는지 건수. 많은 순."""
+    """기록들이 어떤 (채점 프롬프트, 모델) 조합으로 만들어졌는지 건수. 많은 순."""
     mix = defaultdict(int)
     for r in records:
-        mix[(r.get("prompt_version"), r.get("schema_version"), r.get("model"))] += 1
+        mix[(r.get("prompt_version"), r.get("model"))] += 1
     return sorted(mix.items(), key=lambda kv: (-kv[1], kv[0]))
 
 

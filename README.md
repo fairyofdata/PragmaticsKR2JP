@@ -24,7 +24,7 @@ One goal: **catch the wrong thing as the wrong thing** — and accumulate that i
 
 - We ask for categorical tags, never numeric scores: LLM judges are noisy on open numeric scales and steadier on concrete categorical calls.
 - Still, each individual error call **is** an LLM measurement. "We aggregated deterministically, therefore it's objective" would be false. So the reliability (reproducibility) and validity (detection rate) of those annotations are measured and published below.
-- By default, only records whose taxonomy, prompt, schema and model versions all match the current ones are aggregated. A sidebar toggle can include older records with the same taxonomy; the screen then shows the version mix. Different taxonomies are never mixed.
+- By default, only records made with the current **measurement instrument** — taxonomy, grading prompt and model — are aggregated. The storage schema is not part of it, so adding a field never hides your history ([ADR 0012](docs/adr/0012-version-filter-measurement-only.md)). A sidebar toggle can include older records with the same taxonomy; the screen then shows the version mix. Different taxonomies are never mixed.
 
 ### 2. Don't get dragged
 
@@ -54,7 +54,16 @@ Paste a Korean sentence of your own and translate it without a dictionary, or ta
 
 Typos must not become "your weaknesses". Three layers, none of them an LLM: (1) same reading before and after (`合って/会って`) → IME slip candidate, excluded unless you mark it *didn't know*; (2) a one-off never ranks; (3) your own judgment wins. One-kana slips (`ありがと ございます`) cannot be told apart from particle errors (`を→に`) by code, so they are left to (2) and (3). "The flag is wrong" judgments measure the tool's precision and feed the eval set ([ADR 0010](docs/adr/0010-personal-learner-corpus.md)).
 
-### 5. Two modes: grammar and expression
+### 5. Closing the learning loop — without polluting the measurement
+
+Corrective feedback works when the learner notices, **repairs it themselves**, and meets it again. Each of these is kept apart from the measurement ([ADR 0013](docs/adr/0013-learning-loop.md)):
+
+- **Rewrite**: hide the corrections, show only *where* and *what type* was wrong, and rewrite. Code checks each spot — fixed / left as is / changed differently — for free. An optional re-grade (~$0.04) finds patterns that were **wrong again after the rewrite**, the strongest sign of a misconception. Rewrites are stored in `data/revisions.jsonl` and never counted, because they were written after seeing the feedback.
+- **Targeted practice**: a task built to require one of your frequent or *didn't know* patterns, without hinting at the answer. Targeted attempts are **excluded** from frequent errors, the top 5 and the trend (they deliberately provoke that error) and reported separately as wrong again / used correctly / avoided. "Used correctly" requires the right form directly before the word it attaches to (`に` + `会う`), not just somewhere in the answer.
+- **Expression hints**: places the model changed only in the natural rewrite (`その→あの`) are highlighted as hints, not counted. Skipped when the rewrite is effectively a different text (character similarity < 0.6).
+- **Weekly trend**: per type, the share of attempts containing it, plus median time — rates, not counts, because practice volume varies ([ADR 0011](docs/adr/0011-weekly-trend.md)).
+
+### 6. Two modes: grammar and expression
 
 Fewer types per decision means better agreement. Errors outside the chosen mode are tagged `OUT_OF_MODE` only and excluded from the ranking.
 
@@ -91,7 +100,7 @@ Both tables predate the word-level E2 check and the narrowed width rule, which w
 **What the experiment changed**
 1. Prompt rules were **not** reliably followed — "split merged tags" was obeyed once out of three times, "half-width `!?` is not an error" was mostly ignored. Both rules moved into code checks (E2 and the width filter). The project's own principle — block it in code, don't ask the model — is what the experiment supports.
 2. It found two mistakes of ours: the taxonomy priority order was wrong (collocation errors were landing in word choice), and one gold label in the eval set was simply wrong.
-3. A new drag path appeared: for `その→あの` the model left the minimal correction alone and silently fixed it only in the natural rewrite. Not yet blocked — see Next steps.
+3. A new drag path appeared: for `その→あの` the model left the minimal correction alone and silently fixed it only in the natural rewrite. Now surfaced as expression hints (ADR 0013).
 
 **Conclusions (12 items — a small sample)**
 1. **Grammar mode does not get dragged**: in p1 both guide and vote found every planted error span (1.00); in p0, guide 0.96 and vote 1.00. Expression mode in p1 is plain 0.93 / guide 0.81 / vote 0.74 — lower than grammar mode, and lower the more guidance is added (apparently the price of fewer unexpected tags). Same direction as prior work reporting LLMs are strong on surface correction and weak on pragmatics.
@@ -124,7 +133,7 @@ copy .env.example .env        # put in OPENAI_API_KEY (or GEMINI_API_KEY + LLM_P
 .venv\Scripts\streamlit run app.py
 ```
 
-- Practice tab: choose *generated task* or *my own Korean sentence* → write in Japanese → grade → judge each finding.
+- Practice tab: choose *generated task*, *my own Korean sentence* or *targeted practice* → write in Japanese → grade → judge each finding → optionally rewrite with the corrections hidden.
 - Summary tab: frequent error patterns (with a *didn't know only* filter), top 5 types, and a backlog of findings you have not judged yet.
 - Choose demo samples (`samples/`), your own records (`data/`), or both.
 - A streak counter can be switched on in the sidebar (off by default). No quotas, no target scores.
@@ -157,7 +166,6 @@ data/                   your own records, JSONL, append-only (git-ignored)
 
 ## Next steps
 
-- Surface edits the model makes only in the natural rewrite (e.g. `その→あの`)
 - Rebuild the eval set from the user's real translations, labeled typo vs. misconception, reviewed by a native speaker, 30+ items ([ADR 0007](docs/adr/0007-eval-set-from-user-translations.md))
 - Dynamic few-shot: retrieve past cases of the same error type once records accumulate
 - Out of scope for now: speech input, scheduled tests, spaced repetition, more charts, login, deployment
