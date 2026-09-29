@@ -19,3 +19,4 @@ ADR(Architecture Decision Record) = 중요한 설계 결정 하나를 "맥락 �
 | [0008](0008-language-layer-split.md) | 범용 검증 층과 일본어 층을 분리 | 채택 | 2026-09-20 |
 | [0009](0009-quote-resolution-version-filter.md) | 인용 위치 결정, 버전 필터, 확정 태그 교정문 (외부 리뷰) | 채택 | 2026-09-21 |
 | [0010](0010-personal-learner-corpus.md) | 개인 학습자 코퍼스: 빈출 오답, 오타 거르기, 사용자 판정 | 채택 | 2026-09-29 |
+| [0011](0011-weekly-trend.md) | 유형별 주간 추이 (비율, 걸린 시간 중앙값) | 채택 | 2026-09-30 |

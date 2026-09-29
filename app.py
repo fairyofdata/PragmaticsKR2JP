@@ -15,7 +15,7 @@ from coach.corpus import LABELS, EXCLUDED_LABELS, excluded_keys, frequent_patter
 from coach.prompts import PROMPT_VERSION, TOPICS
 from coach.schemas import SCHEMA_VERSION
 from coach.stats import (filter_records, streak_days, summary_counts, tag_key, top_types,
-                         version_mix)
+                         version_mix, weekly_trend)
 from coach.taxonomy import MODES, OUT_OF_MODE, TAXONOMY_VERSION, name_ko
 from coach.verify import diff_html
 
@@ -256,6 +256,21 @@ with tab_summary:
                     st.markdown(f"`{ex['original']}` → `{ex['corrected']}` · {ex['topic']}  \n"
                                 f"{ex['explanation_ko']}")
                     st.caption(ex["answer"])
+
+        # --- 주간 추이 ---
+        codes = [t["code"] for t in top_types(records, exclude_keys=excluded_keys(rows))]
+        trend = weekly_trend(records, codes, excluded_keys(rows))
+        st.markdown("### 주간 추이")
+        st.caption("주마다 '그 유형이 나온 시도의 비율'입니다. 시도 수가 주마다 달라서 건수 대신 비율로 봅니다. "
+                   "시도가 적은 주의 비율은 크게 흔들리니 시도 수와 함께 보세요. 실수·변환 실수 후보는 빠져 있습니다.")
+        if len(trend) < 2:
+            st.info("2주 이상 기록이 쌓이면 변화를 볼 수 있습니다.")
+        if trend and codes:
+            table = [{"주": t["week"], "시도": t["attempts"],
+                      "걸린 시간(중앙값, 초)": t["median_sec"],
+                      **{name_ko(c): t["rates"][c] for c in codes}} for t in trend]
+            st.dataframe(table, hide_index=True,
+                         column_config={name_ko(c): st.column_config.NumberColumn(format="percent") for c in codes})
 
         # --- 판정 대기 ---
         todo = unlabeled(rows)

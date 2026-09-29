@@ -93,6 +93,34 @@ def top_types(records, n=5, examples_per_type=3, exclude_keys=frozenset()):
     } for code in ranked[:n]]
 
 
+def weekly_trend(records, codes, exclude_keys=frozenset()):
+    """주별로 '그 유형이 나온 시도의 비율'. 주마다 시도 수가 달라서 건수가 아니라 비율로 본다.
+
+    결과: [{"week": "2026-W40", "attempts": 12, "median_sec": 95, "rates": {코드: 0.25, ...}}] 오래된 주부터.
+    시도가 적은 주의 비율은 크게 흔들린다 → 화면에 시도 수를 함께 보여준다.
+    """
+    weeks = defaultdict(list)
+    for r in records:
+        year, week, _ = date.fromisoformat(r["timestamp"][:10]).isocalendar()
+        weeks[f"{year}-W{week:02d}"].append(r)
+
+    def has(r, code):
+        return any(e["type"] == code and tag_key(r["id"], e) not in exclude_keys
+                   for e in r["errors"] if "start" in e)
+
+    table = []
+    for week in sorted(weeks):
+        rs = weeks[week]
+        durations = sorted(r["duration_sec"] for r in rs if r.get("duration_sec"))
+        table.append({
+            "week": week,
+            "attempts": len(rs),
+            "median_sec": durations[len(durations) // 2] if durations else None,
+            "rates": {code: sum(has(r, code) for r in rs) / len(rs) for code in codes},
+        })
+    return table
+
+
 def summary_counts(records):
     """요약 화면 상단 숫자들."""
     return {

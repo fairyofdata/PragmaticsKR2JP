@@ -3,7 +3,7 @@
 from coach import store
 from coach.corpus import excluded_keys, frequent_patterns, pattern_key, tag_rows
 from coach.lang_ja import same_reading
-from coach.stats import tag_key, top_types
+from coach.stats import tag_key, top_types, weekly_trend
 
 
 def err(type_, original, corrected, start):
@@ -70,6 +70,21 @@ def test_top_types_respects_exclusions():
     a = rec("a", "友達に合った。", [err("ORTHOGRAPHY", "合った", "会った", 3)])
     rows = tag_rows([a], {})
     assert top_types([a], exclude_keys=excluded_keys(rows)) == []
+
+
+# ---- 주간 추이 ----
+
+def test_weekly_trend_rates_and_exclusions():
+    w1a = rec("a", "友達を会った。", [err("PARTICLE", "を", "に", 2)], ts="2026-09-28T10:00:00+09:00")
+    w1b = rec("b", "駅に着いた。", [], ts="2026-09-29T10:00:00+09:00")
+    w2 = rec("c", "友達に合った。", [err("ORTHOGRAPHY", "合った", "会った", 3)], ts="2026-10-06T10:00:00+09:00")
+    w2["duration_sec"] = 80
+    rows = tag_rows([w1a, w1b, w2], {})
+    table = weekly_trend([w1a, w1b, w2], ["PARTICLE", "ORTHOGRAPHY"], excluded_keys(rows))
+    assert [(t["week"], t["attempts"]) for t in table] == [("2026-W40", 2), ("2026-W41", 1)]
+    assert table[0]["rates"] == {"PARTICLE": 0.5, "ORTHOGRAPHY": 0.0}
+    assert table[1]["rates"]["ORTHOGRAPHY"] == 0.0     # 변환 실수 후보는 추이에서도 뺀다
+    assert table[1]["median_sec"] == 80
 
 
 # ---- 판정 기록 (추가만 하는 파일) ----
