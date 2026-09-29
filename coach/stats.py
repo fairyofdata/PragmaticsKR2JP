@@ -9,6 +9,11 @@ from .taxonomy import OUT_OF_MODE, name_ko
 VERSION_KEYS = ("taxonomy_version", "prompt_version", "schema_version", "model")
 
 
+def tag_key(attempt_id, e):
+    """확정 태그 하나를 가리키는 고정 키. 사용자 판정(labels.jsonl)이 이 키로 태그를 가리킨다."""
+    return f"{attempt_id}:{e['start']}:{e['end']}:{e['type']}"
+
+
 def filter_records(records, mode, current, include_older=False):
     """집계에 넣을 기록을 고른다.
 
@@ -31,11 +36,12 @@ def version_mix(records):
     return sorted(mix.items(), key=lambda kv: (-kv[1], kv[0]))
 
 
-def top_types(records, n=5, examples_per_type=3):
+def top_types(records, n=5, examples_per_type=3, exclude_keys=frozenset()):
     """자주 틀리는 유형 상위 n개.
 
     순위 기준: 그 유형이 나온 '시도 수' (긴 답 하나에 같은 오류가 몰려 있어도 1로 센다).
     동률이면 전체 건수, 그래도 같으면 코드 알파벳 순 — 항상 같은 순서가 나오게.
+    exclude_keys: 순위에서 뺄 태그 키 (사용자가 '실수'로 판정한 것 등, corpus.excluded_keys 가 만든다).
     """
     attempts_with = defaultdict(int)
     counts = defaultdict(int)
@@ -49,7 +55,7 @@ def top_types(records, n=5, examples_per_type=3):
         seen = set()
         for e in r["errors"]:
             code = e["type"]
-            if code == OUT_OF_MODE:
+            if code == OUT_OF_MODE or ("id" in r and "start" in e and tag_key(r["id"], e) in exclude_keys):
                 continue
             counts[code] += 1
             votes[code].append((e.get("votes", 1), r.get("n_samples", 1)))

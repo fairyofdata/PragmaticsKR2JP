@@ -178,7 +178,14 @@ def grade_samples(prompt, mode, n):
     return samples, usage
 
 
-def grade(answer, task, mode, topic, medium, relationship, source="app", n_samples=None):
+def own_korean_task(source_ko, medium, relationship):
+    """사용자가 가져온 한국어 문장을 과제로 만든다 (LLM 호출 없음). 채점 프롬프트는 그대로 쓴다."""
+    return Task(situation_ko=f"다음 한국어를 일본어로 옮긴다.\n{source_ko}",
+                instruction_ko=f"매체({medium})와 상대({relationship})에 맞는 일본어로 옮기세요.")
+
+
+def grade(answer, task, mode, topic, medium, relationship, source="app", n_samples=None,
+          input_mode="generated", source_ko="", duration_sec=None):
     """채점하고 다수결로 합친 Attempt 를 돌려준다 (저장은 호출한 쪽에서)."""
     n = n_samples or N_SAMPLES
     prompt = grade_prompt(mode, task, medium, relationship, answer)
@@ -193,6 +200,9 @@ def grade(answer, task, mode, topic, medium, relationship, source="app", n_sampl
         medium=medium,
         relationship=relationship,
         task=task,
+        input_mode=input_mode,
+        source_ko=source_ko,
+        duration_sec=duration_sec,
         answer=answer,
         taxonomy_version=TAXONOMY_VERSION,
         prompt_version=PROMPT_VERSION,

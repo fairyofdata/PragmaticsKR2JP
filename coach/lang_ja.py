@@ -1,10 +1,13 @@
 """일본어에 대한 지식은 이 파일에만 둔다.
 
-`coach/verify.py` 는 언어를 모른다. 필요한 것을 여기서 두 개만 받아 쓴다.
-  tokenize_chunks(text) -> 단어 덩어리 목록 (문절에 가까운 단위)
-  non_error_diff(a, b)  -> 이 차이는 오류로 보지 않아도 되는가
+밖에서 쓰는 함수
+  tokenize_chunks(text) -> 단어 덩어리 목록 (문절에 가까운 단위)          [verify.py]
+  non_error_diff(a, b)  -> 이 차이는 오류로 보지 않아도 되는가             [verify.py, voting.py]
+  analyze(text)         -> [(표층형, 기본형, 품사)] 빈출 오답 패턴 키용     [corpus.py]
+  same_reading(a, b)    -> 읽기가 같은가 (IME 변환 실수 후보)              [corpus.py]
 
-다른 언어로 확장할 때는 같은 두 함수를 가진 파일을 하나 더 만들면 된다.
+verify.py / voting.py / stats.py 는 언어를 모른다.
+다른 언어로 확장할 때는 같은 함수들을 가진 파일을 하나 더 만들면 된다.
 """
 
 import unicodedata
@@ -68,6 +71,42 @@ def _chunks_fallback(text):
 
 def tokenize_chunks(text):
     return _chunks_sudachi(text) if _tokenizer else _chunks_fallback(text)
+
+
+# 빈출 오답 패턴을 만들 때 "무엇에 걸리는 말인가"로 볼 품사 (조사가 걸리는 동사 등)
+CONTENT_POS = {"動詞", "形容詞", "形状詞", "名詞", "副詞"}
+PARTICLE_POS = {"助詞"}
+
+
+def analyze(text):
+    """[(표층형, 기본형, 품사)]. 빈출 오답 패턴 키를 만들 때 쓴다 (合っ → 合う 처럼 활용을 없애서 같은 오류를 묶기 위해).
+    형태소 분석기가 없으면 글자 덩어리를 그대로 쓰고 품사는 비워 둔다."""
+    if _tokenizer:
+        return [(m.surface(), _base_form(m), m.part_of_speech()[0])
+                for m in _tokenizer.tokenize(text, SplitMode.C)]
+    return [(c, c, "") for c in _chunks_fallback(text)]
+
+
+def _base_form(m):
+    """기본형. 음편 때문에 모양만 바뀐 것은 하나로 맞춘다 (飲んで의 で → て, 飲んだ의 だ → た).
+    그래야 食べて→飲んで 가 '食べる→飲む' 한 가지 수정으로 묶인다."""
+    pos = m.part_of_speech()
+    if pos[0] == "助詞" and pos[1] == "接続助詞" and m.surface() == "で":
+        return "て"
+    if pos[0] == "助動詞":
+        return m.normalized_form()      # 과거의 だ → た (단정의 だ 는 그대로 だ)
+    return m.dictionary_form()
+
+
+def same_reading(a, b):
+    """두 문자열의 읽기가 같은가 → IME 변환 실수 후보 (合って/会って, 効く/聞く).
+    형태소 분석기가 없으면 판단하지 않는다 (False)."""
+    if not _tokenizer or a == b:
+        return False
+
+    def reading(s):
+        return "".join(m.reading_form() for m in _tokenizer.tokenize(s, SplitMode.C))
+    return reading(a) == reading(b)
 
 
 def _fold(text):

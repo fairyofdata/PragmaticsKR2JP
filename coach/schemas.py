@@ -7,7 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-SCHEMA_VERSION = "s2"  # s0→s1: dropped_width, merged_tags / s1→s2: 인용 문맥, 모호 인용 수, 확정 태그 교정문
+SCHEMA_VERSION = "s3"  # s0→s1: dropped_width, merged_tags / s1→s2: 인용 문맥, 모호 인용 수, 확정 태그 교정문
+                       # s2→s3: 입력 방식, 한국어 원문, 걸린 시간 (개인 코퍼스용)
 
 
 # ---------- LLM이 돌려주는 것 ----------
@@ -59,6 +60,9 @@ class Attempt(BaseModel):
     medium: str
     relationship: str
     task: Task
+    input_mode: Literal["generated", "own_korean"] = "generated"  # 앱이 낸 과제 / 내가 가져온 한국어 문장 (s3~)
+    source_ko: str = ""                # own_korean 일 때 사용자가 가져온 한국어 원문 (s3~)
+    duration_sec: int | None = None    # 과제를 받고 채점을 누를 때까지 걸린 시간 (s3~)
     answer: str                        # 사용자 입력 원문. 어떤 정규화도 하지 않는다.
     intended_meaning_ko: str
     minimal_correction: str

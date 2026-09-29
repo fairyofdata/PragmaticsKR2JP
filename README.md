@@ -48,7 +48,13 @@ Everything language-specific lives in [coach/lang_ja.py](coach/lang_ja.py), whic
 
 Each answer is graded 3 times. A finding counts as **confirmed** only if the same type overlapping the same span appears in at least 2 of the 3; single-run findings are shown as "low confidence" and excluded from the counts. The summary shows, next to each type, how many findings were unanimous and how many were dropped as low confidence. Code does the merging. There are no fixed few-shot answer examples (they skew topics and types) — only one short contrast pair per type, unrelated to any task.
 
-### 4. Two modes: grammar and expression
+### 4. A personal learner corpus, not just a checker
+
+Paste a Korean sentence of your own and translate it without a dictionary, or take a generated task. Every confirmed finding gets a one-click judgment — **slip (typo/IME)** / **didn't know** / **unsure** / **the flag is wrong** — appended to `data/labels.jsonl` (records are never edited). "Frequent errors" are counted per *pattern*, not per type: `を → に (会う)` — lemmatized, with the verb a particle hangs on — and only once it recurs in two or more separate attempts.
+
+Typos must not become "your weaknesses". Three layers, none of them an LLM: (1) same reading before and after (`合って/会って`) → IME slip candidate, excluded unless you mark it *didn't know*; (2) a one-off never ranks; (3) your own judgment wins. One-kana slips (`ありがと ございます`) cannot be told apart from particle errors (`を→に`) by code, so they are left to (2) and (3). "The flag is wrong" judgments measure the tool's precision and feed the eval set ([ADR 0010](docs/adr/0010-personal-learner-corpus.md)).
+
+### 5. Two modes: grammar and expression
 
 Fewer types per decision means better agreement. Errors outside the chosen mode are tagged `OUT_OF_MODE` only and excluded from the ranking.
 
@@ -118,8 +124,9 @@ copy .env.example .env        # put in OPENAI_API_KEY (or GEMINI_API_KEY + LLM_P
 .venv\Scripts\streamlit run app.py
 ```
 
-- Practice tab: pick mode and topic in the sidebar → get a task → write in Japanese → grade.
-- Summary tab: top 5 error types per mode with real examples. Choose demo samples (`samples/`), your own records (`data/`), or both.
+- Practice tab: choose *generated task* or *my own Korean sentence* → write in Japanese → grade → judge each finding.
+- Summary tab: frequent error patterns (with a *didn't know only* filter), top 5 types, and a backlog of findings you have not judged yet.
+- Choose demo samples (`samples/`), your own records (`data/`), or both.
 - A streak counter can be switched on in the sidebar (off by default). No quotas, no target scores.
 - The bundled demo samples were produced with prompt p1. Under the default strict version filter they are hidden; switch on **"이전 버전 기록도 포함"** (include older records) in the sidebar to see them.
 
@@ -139,6 +146,7 @@ coach/prompts.py        task and grading prompts
 coach/llm.py            the only place that calls an LLM
 coach/verify.py         anti-drag checks D, E, E2 (language-agnostic)
 coach/lang_ja.py        Japanese layer: word chunking, non-error differences
+coach/corpus.py         personal corpus: patterns, typo filtering, frequent errors
 coach/voting.py         3-way majority voting
 coach/stats.py          aggregation (pure functions)
 experiments/            eval set, experiment script, results (raw model output kept)
