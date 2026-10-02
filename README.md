@@ -2,6 +2,8 @@
 
 English · [한국어](README_kr.md) · [日本語](README_jp.md)
 
+[![tests](https://github.com/fairyofdata/PragmaticsKR2JP/actions/workflows/tests.yml/badge.svg)](https://github.com/fairyofdata/PragmaticsKR2JP/actions/workflows/tests.yml)
+
 A personal, local app that tags errors in your Japanese writing against a **fixed error taxonomy**, then lets **code** — not the LLM — count which error types you repeat.
 
 ![Practice screen](docs/images/practice.png)
@@ -138,6 +140,10 @@ copy .env.example .env        # put in OPENAI_API_KEY (or GEMINI_API_KEY + LLM_P
 - Choose demo samples (`samples/`), your own records (`data/`), or both.
 - Backup (sidebar): download everything as a zip of the original JSONL files and merge a backup back in — imports never overwrite and never duplicate. A separate one-way CSV (one finding per row) opens in Excel for analysis or native-speaker review ([ADR 0014](docs/adr/0014-backup-export-import.md)).
 - A streak counter can be switched on in the sidebar (off by default). No quotas, no target scores.
+
+**On your phone** (no deployment — your PC is the server): put `COACH_PASSCODE=<8+ characters>` in `.env`, run `python -m tools.run_mobile`, and open the printed address from a phone on the same Wi-Fi. A plain `streamlit run app.py` is bound to localhost; the app is opened to the network only through this command, and it refuses to start without a passcode. Traffic is not encrypted, so use it at home or over a private network only ([ADR 0016](docs/adr/0016-ci-tests-mobile-over-lan.md)).
+
+<img src="docs/images/mobile-practice.png" width="260" alt="Practice on a phone"> <img src="docs/images/mobile-summary.png" width="260" alt="Summary on a phone">
 - The bundled demo samples were produced with prompt p1. Under the default strict version filter they are hidden; switch on **"이전 버전 기록도 포함"** (include older records) in the sidebar to see them.
 
 ```powershell

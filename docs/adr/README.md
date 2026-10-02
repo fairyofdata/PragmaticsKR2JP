@@ -23,4 +23,5 @@ ADR(Architecture Decision Record) = 중요한 설계 결정 하나를 "맥락 �
 | [0012](0012-version-filter-measurement-only.md) | 버전 필터는 측정 도구만 본다 (스키마 제외) | 채택 | 2026-09-30 |
 | [0013](0013-learning-loop.md) | 학습 순환: 고쳐 쓰기, 약점 겨냥 연습, 표현 참고 | 채택 | 2026-09-30 |
 | [0014](0014-backup-export-import.md) | 백업: 내보내기 / 불러오기 (JSONL zip), 분석용 CSV | 채택 | 2026-10-03 |
-| [0015](0015-direction-check-mobile-deploy.md) | 방향 점검: 최초 기획과의 정렬, 모바일 UI·Firebase 배포 검토 | 검토 (결정 대기) | 2026-10-03 |
+| [0015](0015-direction-check-mobile-deploy.md) | 방향 점검: 최초 기획과의 정렬, 모바일 UI·Firebase 배포 검토 | 검토 (1단계는 0016 으로 채택) | 2026-10-03 |
+| [0016](0016-ci-tests-mobile-over-lan.md) | CI(테스트만), 폰 화면 정리, 같은 망에서 폰 접속 | 채택 | 2026-10-03 |

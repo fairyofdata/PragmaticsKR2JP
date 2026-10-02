@@ -2,6 +2,8 @@
 
 [English](README.md) · [한국어](README_kr.md) · 日本語
 
+[![tests](https://github.com/fairyofdata/PragmaticsKR2JP/actions/workflows/tests.yml/badge.svg)](https://github.com/fairyofdata/PragmaticsKR2JP/actions/workflows/tests.yml)
+
 自分が書いた日本語を**固定の誤用分類表**に従ってタグ付けし、「何を繰り返し間違えているか」を**コードで**集計する個人用ローカルアプリです。集計や順位付けは LLM にはさせません。
 
 ![練習画面](docs/images/practice.png)
@@ -136,6 +138,10 @@ copy .env.example .env        # OPENAI_API_KEY（または GEMINI_API_KEY と LL
 - まとめタブ：よくある誤りのパターン（「知らなかった」だけに絞る切り替えあり）、種別の上位 5 件、まだ判定していない指摘の一覧。デモ用の例（`samples/`）と自分の記録（`data/`）を選べます。
 - バックアップ（サイドバー）：記録全体を元の JSONL のまま zip でダウンロードでき、バックアップを取り込んで統合できます。取り込みは上書きせず、重複も作りません。分析用 CSV（指摘 1 件 = 1 行）は書き出し専用で、Excel で開いたり母語話者の確認に渡したりするときに使います（[ADR 0014](docs/adr/0014-backup-export-import.md)）。
 - 連続使用日数の表示はサイドバーで切り替えられます（既定はオフ）。ノルマや目標点はありません。
+
+**スマホで使う**（デプロイなし。自分の PC がサーバーになります）：`.env` に `COACH_PASSCODE=<8 文字以上>` を入れて `python -m tools.run_mobile` を実行し、同じ Wi-Fi のスマホから表示されたアドレスを開きます。通常の `streamlit run app.py` はこの PC からしか接続できません。ネットワークに公開する方法はこのコマンドだけで、パスコードがなければ起動を拒否します。通信は暗号化されないので、自宅かプライベートネットワークでのみ使ってください（[ADR 0016](docs/adr/0016-ci-tests-mobile-over-lan.md)）。
+
+<img src="docs/images/mobile-practice.png" width="260" alt="スマホでの練習"> <img src="docs/images/mobile-summary.png" width="260" alt="スマホでのまとめ">
 - 同梱のデモ用サンプルはプロンプト p1 で作ったもので、既定（厳格）のバージョンフィルタではまとめに表示されません。サイドバーの **「이전 버전 기록도 포함」**（以前のバージョンの記録も含める）をオンにすると表示されます。
 
 ```powershell

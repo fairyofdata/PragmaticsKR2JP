@@ -1,0 +1,8 @@
+# 기본 실행(streamlit run app.py)은 이 PC 에서만 접속된다.
+# Streamlit 은 주소를 지정하지 않으면 모든 네트워크에 열리기 때문에 명시적으로 막아 둔다 (ADR 0016).
+# 폰에서 쓰려면: python -m tools.run_mobile  (암호가 설정돼 있어야 실행된다)
+[server]
+address = "localhost"
+
+[browser]
+gatherUsageStats = false

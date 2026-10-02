@@ -2,6 +2,8 @@
 
 [English](README.md) · 한국어 · [日本語](README_jp.md)
 
+[![tests](https://github.com/fairyofdata/PragmaticsKR2JP/actions/workflows/tests.yml/badge.svg)](https://github.com/fairyofdata/PragmaticsKR2JP/actions/workflows/tests.yml)
+
 일본어로 쓴 짧은 글을 **고정된 오류 유형표**에 따라 태깅하고, 내가 자주 틀리는 유형을 코드로 집계해 보여주는 개인용 로컬 앱.
 
 ![연습 화면](docs/images/practice.png)
@@ -165,6 +167,10 @@ copy .env.example .env        # OPENAI_API_KEY (또는 GEMINI_API_KEY + LLM_PROV
 - 요약 탭: 빈출 오답 패턴('몰랐음만 보기' 필터), 유형 상위 5개, 아직 판정하지 않은 지적 목록. 시연용 예시(`samples/`)와 내 기록(`data/`)을 골라 볼 수 있다.
 - 백업(사이드바): 기록 전체를 원래의 JSONL 파일 그대로 zip 으로 내려받고, 백업을 다시 합칠 수 있다. 불러오기는 덮어쓰지 않고 중복도 만들지 않는다. 분석용 CSV(지적 한 건 = 한 줄)는 내보내기 전용으로, 엑셀로 열거나 원어민 검수에 넘길 때 쓴다 ([ADR 0014](docs/adr/0014-backup-export-import.md)).
 - 연속 사용일 표시는 사이드바에서 켤 수 있다(기본 꺼짐). 할당량이나 목표 점수는 없다.
+
+**폰에서 쓰기** (배포 없이, 내 PC 가 서버): `.env` 에 `COACH_PASSCODE=<8자 이상>` 을 넣고 `python -m tools.run_mobile` 을 실행한 뒤, 같은 Wi-Fi 의 폰에서 출력된 주소로 접속한다. 그냥 `streamlit run app.py` 하면 이 PC 에서만 접속된다. 네트워크에 여는 길은 이 명령 하나뿐이고, 암호가 없으면 실행을 거부한다. 통신이 암호화되지 않으므로 집이나 사설망에서만 쓴다 ([ADR 0016](docs/adr/0016-ci-tests-mobile-over-lan.md)).
+
+<img src="docs/images/mobile-practice.png" width="260" alt="폰에서 연습"> <img src="docs/images/mobile-summary.png" width="260" alt="폰에서 요약">
 - 동봉된 시연 예시는 프롬프트 p1 로 만든 것이라, 기본(엄격) 버전 필터에서는 요약에 나오지 않는다. 사이드바의 **"이전 버전 기록도 포함"** 을 켜면 보인다.
 
 테스트와 실험:

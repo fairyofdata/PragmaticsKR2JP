@@ -3,6 +3,7 @@
 실행: streamlit run app.py
 """
 
+import hmac
 import os
 import random
 import time
@@ -27,6 +28,7 @@ from coach.verify import check_revision, diff_html, highlight_html, similarity, 
 load_dotenv()
 st.set_page_config(page_title="일본어 작문 코치", page_icon="✍️", layout="centered")
 
+MODE_SHORT = {"grammar": "문법 (정확성)", "expression": "표현 (적절성)"}   # 폰 화면에 들어가는 짧은 이름
 INPUT_KINDS = {"generated": "앱이 낸 과제", "own_korean": "내 한국어 문장", "targeted": "약점 겨냥 연습"}
 REVISION_STATUS = {"fixed": "고침", "unchanged": "그대로 (안 고침)", "changed": "다르게 고침 (다시 채점으로 확인)"}
 TARGET_OUTCOME = {"repeated": "또 틀림", "used": "맞게 씀", "not_used": "이번 답에서 그 표현을 쓰지 않음"}
@@ -51,11 +53,30 @@ def csv_bytes():
     return tags_csv(own, tag_rows(own, store.load_labels()))
 
 
-# ---------- 사이드바 ----------
+def require_passcode():
+    """같은 Wi-Fi 의 폰에서 접속할 때를 위한 간단한 잠금 (ADR 0016).
+
+    .env 에 COACH_PASSCODE 를 넣으면, 암호를 맞게 넣기 전에는 아무것도 보여주지 않는다.
+    앱을 네트워크에 열면 같은 망의 누구나 내 기록을 보고 내 API 키로 채점을 돌릴 수 있기 때문이다.
+    설정하지 않으면(PC 에서만 쓸 때) 그냥 지나간다. hmac.compare_digest = 걸린 시간으로 암호를 추측하지 못하게 하는 비교.
+    """
+    expected = os.getenv("COACH_PASSCODE")
+    if not expected or st.session_state.get("unlocked"):
+        return
+    st.subheader("일본어 작문 코치")
+    entered = st.text_input("암호", type="password")
+    if entered and hmac.compare_digest(entered.encode(), expected.encode()):
+        st.session_state.unlocked = True
+        st.rerun()
+    if entered:
+        st.error("암호가 다릅니다.")
+    st.stop()
+
+
+require_passcode()
+
+# ---------- 사이드바 (요약 설정과 백업. 폰에서는 접혀 있으므로 매번 쓰는 것은 본문에 둔다) ----------
 with st.sidebar:
-    mode = st.radio("모드", list(MODES), format_func=lambda m: MODES[m])
-    topic = st.selectbox("주제 (앱이 낸 과제일 때)", list(TOPICS))
-    st.divider()
     source = st.radio("요약에 쓸 기록", ["내 기록", "시연용 예시", "둘 다"], index=2)
     include_older = st.toggle("이전 버전 기록도 포함", value=False,
                               help="기본은 측정 도구(유형표·채점 프롬프트·모델)가 모두 현재와 같은 기록만 집계합니다. "
@@ -82,6 +103,12 @@ with st.sidebar:
                     for name, r in report.items()))
             except BackupError as e:
                 st.error(f"불러오지 못했습니다: {e}")
+
+# 모드는 연습과 요약 둘 다에 쓰이므로 탭 위, 본문 맨 위에 둔다 (폰에서도 바로 보이게)
+mode = st.segmented_control("모드", list(MODES), format_func=MODE_SHORT.get, default="grammar",
+                            required=True, key="mode",
+                            help="문법: 조사·활용·시제·태·접속 / 표현: 경어·문체·어휘·연어·담화. "
+                                 "한 번에 판단할 유형을 줄여서 채점이 덜 흔들리게 합니다.")
 
 labels = store.load_labels()
 
@@ -291,6 +318,7 @@ with tab_practice:
                                       default="generated", required=True, key="input_kind")
 
     if input_kind == "generated":
+        topic = st.selectbox("주제", list(TOPICS))
         if st.button("과제 받기", type="primary"):
             medium, relationship = random.choice(TOPICS[topic])
             with st.spinner("과제를 만드는 중..."):
@@ -381,10 +409,10 @@ with tab_summary:
     else:
         rows = build_rows(records, labels)
         c = summary_counts(records)
-        col1, col2, col3 = st.columns(3)
-        col1.metric("시도", c["attempts"])
-        col2.metric("확정 오류", c["errors"] - c["out_of_mode"])
-        col3.metric("오류 없는 시도", c["error_free"])
+        with st.container(horizontal=True):   # st.columns 는 폰에서 세로로 쌓인다. 이건 한 줄을 유지한다
+            st.metric("시도", c["attempts"])
+            st.metric("확정 오류", c["errors"] - c["out_of_mode"])
+            st.metric("오류 없는 시도", c["error_free"])
         n_labeled_out = sum(1 for row in rows if row["label"] in EXCLUDED_LABELS)
         n_ime_out = sum(1 for row in rows if row["excluded"] and row["label"] not in EXCLUDED_LABELS)
         st.caption(f"모드 밖 오류 {c['out_of_mode']} · 낮은 확신 {c['tentative']} · "
