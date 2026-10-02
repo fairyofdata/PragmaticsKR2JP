@@ -22,3 +22,4 @@ ADR(Architecture Decision Record) = 중요한 설계 결정 하나를 "맥락 �
 | [0011](0011-weekly-trend.md) | 유형별 주간 추이 (비율, 걸린 시간 중앙값) | 채택 | 2026-09-30 |
 | [0012](0012-version-filter-measurement-only.md) | 버전 필터는 측정 도구만 본다 (스키마 제외) | 채택 | 2026-09-30 |
 | [0013](0013-learning-loop.md) | 학습 순환: 고쳐 쓰기, 약점 겨냥 연습, 표현 참고 | 채택 | 2026-09-30 |
+| [0014](0014-backup-export-import.md) | 백업: 내보내기 / 불러오기 (JSONL zip), 분석용 CSV | 채택 | 2026-10-03 |

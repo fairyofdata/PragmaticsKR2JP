@@ -56,8 +56,14 @@ def append_revision(revision, path=None):
 
 
 def load_revisions(path=None):
-    """{고쳐 쓰기 id: 기록}. 다시 채점하면 같은 id 로 새 줄이 붙으므로 마지막 것이 이긴다."""
-    return {row["id"]: row for row in load(path or revisions_file())}
+    """{고쳐 쓰기 id: 기록}. 같은 id 가 여러 줄이면 다시 채점한 쪽을 쓴다.
+    (백업을 불러와 합치면 줄 순서가 뒤섞일 수 있어서 '마지막 줄'이 아니라 내용으로 고른다)"""
+    revisions = {}
+    for row in load(path or revisions_file()):
+        old = revisions.get(row["id"])
+        if old is None or row.get("regraded") or not old.get("regraded"):
+            revisions[row["id"]] = row
+    return revisions
 
 
 def append_label(key, label, path=None):
@@ -68,9 +74,12 @@ def append_label(key, label, path=None):
 
 
 def load_labels(path=None):
-    """{태그 키: 판정}. 같은 키가 여러 번 있으면 마지막 것. 취소(None)된 키는 빠진다."""
+    """{태그 키: 판정}. 같은 키가 여러 번 있으면 가장 나중에 '기록된 시각'의 것. 취소(None)된 키는 빠진다.
+    파일의 줄 순서가 아니라 시각으로 정렬한다 (백업을 불러와 합치면 옛 판정이 뒤에 붙을 수 있다).
+    sorted 는 안정 정렬이라, 시각이 같으면 파일에 먼저 적힌 것이 먼저다."""
     labels = {}
-    for row in load(path or labels_file()):
+    rows = sorted(load(path or labels_file()), key=lambda row: datetime.fromisoformat(row["timestamp"]))
+    for row in rows:
         if row["label"] is None:
             labels.pop(row["key"], None)
         else:

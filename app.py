@@ -13,6 +13,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from coach import llm, store
+from coach.backup import BackupError, export_zip, import_zip, tags_csv
 from coach.corpus import (EXCLUDED_LABELS, LABELS, excluded_keys, frequent_patterns,
                           repeated_after_revision, revision_summary, tag_rows, target_candidates,
                           target_outcome, target_summary, unlabeled)
@@ -34,6 +35,22 @@ RELATIONSHIPS = sorted({rel for scenes in TOPICS.values() for _, rel in scenes})
 # 자연스러운 문장이 교정문과 글자 기준으로 이보다 덜 비슷하면 '사실상 다시 쓴 글'로 보고 하이라이트하지 않는다
 NATURAL_HINT_MIN_SIMILARITY = 0.6
 
+BACKUP_NAMES = {"attempts.jsonl": "기록", "labels.jsonl": "판정", "revisions.jsonl": "고쳐 쓰기"}
+
+
+def backup_bytes():
+    """백업 zip. 내려받기 버튼을 누를 때만 만든다."""
+    return export_zip(store.DATA_FILE.parent, {
+        "taxonomy": TAXONOMY_VERSION, "prompt": PROMPT_VERSION, "schema": SCHEMA_VERSION,
+        "model": llm.GRADER_MODEL})
+
+
+def csv_bytes():
+    """분석용 CSV. 내 기록 전체(모드·버전 구분 없이)의 확정 지적을 한 줄씩."""
+    own = store.load(store.DATA_FILE)
+    return tags_csv(own, tag_rows(own, store.load_labels()))
+
+
 # ---------- 사이드바 ----------
 with st.sidebar:
     mode = st.radio("모드", list(MODES), format_func=lambda m: MODES[m])
@@ -44,6 +61,27 @@ with st.sidebar:
                               help="기본은 측정 도구(유형표·채점 프롬프트·모델)가 모두 현재와 같은 기록만 집계합니다. "
                                    "켜면 유형표만 같은 기록을 함께 집계하고, 섞인 버전 구성을 보여줍니다.")
     show_streak = st.toggle("연속 사용일 표시", value=False)
+
+    # --- 백업 (ADR 0014) ---
+    st.divider()
+    with st.expander("백업 · 내보내기 / 불러오기"):
+        st.caption("내 기록·판정·고쳐 쓰기는 이 PC에만 있습니다 (git 제외). 가끔 내려받아 다른 곳에 보관하세요.")
+        stamp = datetime.now().strftime("%Y%m%d-%H%M")
+        st.download_button("백업 내려받기 (.zip)", data=backup_bytes, file_name=f"pragmatics-backup-{stamp}.zip",
+                           mime="application/zip", on_click="ignore", icon=":material/download:")
+        st.download_button("분석용 CSV (지적 한 줄씩)", data=csv_bytes, file_name=f"pragmatics-tags-{stamp}.csv",
+                           mime="text/csv", on_click="ignore", icon=":material/table:",
+                           help="엑셀로 열 수 있는 표. 내보내기 전용이라 불러올 수는 없습니다.")
+        uploaded = st.file_uploader("백업 불러오기 (.zip)", type="zip", max_upload_size=50)
+        if uploaded and st.button("기존 기록에 합치기", icon=":material/upload:"):
+            try:
+                report = import_zip(uploaded.getvalue(), store.DATA_FILE.parent)
+                st.success("불러왔습니다. " + " · ".join(
+                    f"{BACKUP_NAMES[name]} +{r['added']} (이미 있음 {r['skipped']}"
+                    + (f", 읽지 못함 {r['invalid']}" if r["invalid"] else "") + ")"
+                    for name, r in report.items()))
+            except BackupError as e:
+                st.error(f"불러오지 못했습니다: {e}")
 
 labels = store.load_labels()
 

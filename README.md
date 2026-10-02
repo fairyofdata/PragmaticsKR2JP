@@ -136,6 +136,7 @@ copy .env.example .env        # put in OPENAI_API_KEY (or GEMINI_API_KEY + LLM_P
 - Practice tab: choose *generated task*, *my own Korean sentence* or *targeted practice* → write in Japanese → grade → judge each finding → optionally rewrite with the corrections hidden.
 - Summary tab: frequent error patterns (with a *didn't know only* filter), top 5 types, and a backlog of findings you have not judged yet.
 - Choose demo samples (`samples/`), your own records (`data/`), or both.
+- Backup (sidebar): download everything as a zip of the original JSONL files and merge a backup back in — imports never overwrite and never duplicate. A separate one-way CSV (one finding per row) opens in Excel for analysis or native-speaker review ([ADR 0014](docs/adr/0014-backup-export-import.md)).
 - A streak counter can be switched on in the sidebar (off by default). No quotas, no target scores.
 - The bundled demo samples were produced with prompt p1. Under the default strict version filter they are hidden; switch on **"이전 버전 기록도 포함"** (include older records) in the sidebar to see them.
 
@@ -156,6 +157,7 @@ coach/llm.py            the only place that calls an LLM
 coach/verify.py         anti-drag checks D, E, E2 (language-agnostic)
 coach/lang_ja.py        Japanese layer: word chunking, non-error differences
 coach/corpus.py         personal corpus: patterns, typo filtering, frequent errors
+coach/backup.py         backup zip export / merge-import, analysis CSV
 coach/voting.py         3-way majority voting
 coach/stats.py          aggregation (pure functions)
 experiments/            eval set, experiment script, results (raw model output kept)
