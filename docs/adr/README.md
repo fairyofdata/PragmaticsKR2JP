@@ -25,3 +25,4 @@ ADR(Architecture Decision Record) = 중요한 설계 결정 하나를 "맥락 �
 | [0014](0014-backup-export-import.md) | 백업: 내보내기 / 불러오기 (JSONL zip), 분석용 CSV | 채택 | 2026-10-03 |
 | [0015](0015-direction-check-mobile-deploy.md) | 방향 점검: 최초 기획과의 정렬, 모바일 UI·Firebase 배포 검토 | 검토 (1단계는 0016 으로 채택) | 2026-10-03 |
 | [0016](0016-ci-tests-mobile-over-lan.md) | CI(테스트만), 폰 화면 정리, 같은 망에서 폰 접속 | 채택 | 2026-10-03 |
+| [0017](0017-session-handoff-hook.md) | 세션 인수인계 문서와 SessionStart 훅 | 채택 | 2026-10-07 |
