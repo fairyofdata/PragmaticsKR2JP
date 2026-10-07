@@ -5,3 +5,6 @@ __pycache__/
 data/
 .streamlit/secrets.toml
 .claude/
+# 백업·분석용 내보내기 파일 (내가 쓴 글이 들어 있다. 프로젝트 폴더에 저장해도 올라가지 않게)
+pragmatics-backup-*.zip
+pragmatics-tags-*.csv
