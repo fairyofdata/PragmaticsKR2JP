@@ -63,6 +63,16 @@
 - GitHub 저장소의 설명(description)과 토픽이 비어 있다. 웹 설정이라 사용자가 직접.
 - PII 게이트는 사용자가 따로 만드는 중이다. 지난 세션에 `cascadedlp` 라는 MCP 서버가 연결 실패로 떠 있었다 (그 게이트일 수 있다).
 
+### README 정리 (2026-10-26, ADR 0018) 뒤 남은 것 — 6개 저장소 공통
+
+사용자 판단: 지금은 구조를 맞추는 것으로 충분하고, 여기 적은 것은 나중에 처리한다.
+- **브랜치만 푸시했다.** 6개 저장소 모두 `claude/admiring-einstein-5wr0gx` 에만 있고 main/master 에는 합치지 않았다. 프로필(`fairyofdata`) README 는 master 에 합쳐야 GitHub 프로필에 보인다. PR 은 만들지 않았다.
+- Neutralize4KRJP 에 새로 넣은 CI(`tests.yml`)는 master push·PR 에서만 돈다. GitHub 에서 실제로 통과하는지는 합친 뒤 확인.
+- RAGSTT4Lyrics 테스트는 그 세션(클라우드)에서 돌리지 못했다 (sentence-transformers·torch 필요). 바꾼 것은 문서·노트북 위치뿐이라 영향은 없을 것으로 보지만, 사용자 PC 에서 한 번 `pytest -q tests`.
+- 이 저장소 README 의 흐름도(mermaid)가 GitHub 에서 제대로 그려지는지 눈으로 확인하지 못했다.
+- `practice.png` 는 예전 화면 (위 4번 보류 묶음과 함께 다시 찍는다).
+- 정한 것 (다시 묻지 않는다): README 원본은 한국어, 첫 화면은 영어 / 직함은 '소프트웨어 엔지니어'로 통일 / RAGSTT4Lyrics 코드는 Apache-2.0, 노트북 출력 셀은 그대로 둔다 / Neutralize4KRJP 기사 CSV 는 출처·저작권 안내로 충분.
+
 ## 6. 이 사용자와 일하는 방식 (대화에서 확인된 것)
 
 - 대화는 한국어. 코드는 읽을 수 있지만 쓰는 건 약하다 → 새 개념은 한 줄로 풀어 쓴다.
