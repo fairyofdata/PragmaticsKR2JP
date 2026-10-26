@@ -66,10 +66,9 @@
 ### README 정리 (2026-10-26, ADR 0018) 뒤 남은 것 — 6개 저장소 공통
 
 사용자 판단: 지금은 구조를 맞추는 것으로 충분하고, 여기 적은 것은 나중에 처리한다.
-- **브랜치만 푸시했다.** 6개 저장소 모두 `claude/admiring-einstein-5wr0gx` 에만 있고 main/master 에는 합치지 않았다. 프로필(`fairyofdata`) README 는 master 에 합쳐야 GitHub 프로필에 보인다. PR 은 만들지 않았다.
-- Neutralize4KRJP 에 새로 넣은 CI(`tests.yml`)는 master push·PR 에서만 돈다. GitHub 에서 실제로 통과하는지는 합친 뒤 확인.
-- RAGSTT4Lyrics 테스트는 그 세션(클라우드)에서 돌리지 못했다 (sentence-transformers·torch 필요). 바꾼 것은 문서·노트북 위치뿐이라 영향은 없을 것으로 보지만, 사용자 PC 에서 한 번 `pytest -q tests`.
-- 이 저장소 README 의 흐름도(mermaid)가 GitHub 에서 제대로 그려지는지 눈으로 확인하지 못했다.
+- 2026-10-26 사용자 승인으로 6개 저장소 모두 기본 브랜치(main/master)에 반영했다. 그 커밋에서 CI 는 모두 통과 (Neutralize4KRJP 의 새 CI 첫 실행 포함). 이 README 의 흐름도는 mermaid 11 로 세 언어판 모두 렌더링 확인.
+- RAGSTT4Lyrics 테스트는 그 세션(클라우드)에서 돌리지 못했다 (sentence-transformers·torch 필요, 그 저장소에는 CI 가 없다). 바꾼 것은 문서·노트북 위치뿐이라 영향은 없을 것으로 보지만, 사용자 PC 에서 한 번 `pytest -q tests`.
+- 프로필 저장소(`fairyofdata`)의 기본 브랜치는 `master` 다. 반영할 때 오래된 `main` 브랜치(마지막 커밋 `f2f8921 recovering`)를 기본 브랜치로 잘못 골라 `bba15a8` 로 앞당겼다(빨리 감기라 지워진 것은 없다). 되돌리려면 강제 푸시가 필요해 권한 확인에서 막혔다. 사용자에게 알렸고, 그대로 둘지·지울지·되돌릴지는 사용자 결정.
 - `practice.png` 는 예전 화면 (위 4번 보류 묶음과 함께 다시 찍는다).
 - 정한 것 (다시 묻지 않는다): README 원본은 한국어, 첫 화면은 영어 / 직함은 '소프트웨어 엔지니어'로 통일 / RAGSTT4Lyrics 코드는 Apache-2.0, 노트북 출력 셀은 그대로 둔다 / Neutralize4KRJP 기사 CSV 는 출처·저작권 안내로 충분.
 
