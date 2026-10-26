@@ -1,20 +1,81 @@
+<!-- Source: README_kr.md (Korean is the source; English and Japanese are translations) · synced 2026-10-26 -->
+
 # PragmaticsKR2JP — a Japanese writing coach for Korean speakers
 
-English · [한국어](README_kr.md) · [日本語](README_jp.md)
+[English](README.md) · [한국어](README_kr.md) · [日本語](README_jp.md)
 
 [![tests](https://github.com/fairyofdata/PragmaticsKR2JP/actions/workflows/tests.yml/badge.svg)](https://github.com/fairyofdata/PragmaticsKR2JP/actions/workflows/tests.yml)
 
-A personal, local app that tags errors in your Japanese writing against a **fixed error taxonomy**, then lets **code** — not the LLM — count which error types you repeat.
+A personal, local app that points out what is wrong in a short piece of Japanese writing against a **fixed error taxonomy**, and lets **code** count which patterns you keep getting wrong.
+
+- **The LLM only annotates**: error position, type, correction and a Korean explanation. Scores, rankings, trends and checking its own output are done by code.
+- **Reading a wrong input as what you probably meant** is blocked by code checks, not by polite requests in the prompt.
+- **How far those annotations can be trusted is measured and published.** Grammar mode found every planted error position (1.00); expression mode found 0.74–0.93 (12 items, see [experiment](#experiment-summary)).
 
 ![Practice screen](docs/images/practice.png)
+<sub>Practice screen (captured 2026-09-20). The screen has changed since — the input choice moved into the main column, among others. Retaking it is on hold until the paid re-run.</sub>
+
+## Quick start
+
+```powershell
+python -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+copy .env.example .env        # put in OPENAI_API_KEY (or GEMINI_API_KEY + LLM_PROVIDER=gemini)
+.venv\Scripts\streamlit run app.py
+```
+
+- **Practice tab**: choose *generated task*, *my own Korean sentence* or *targeted practice* → write in Japanese → grade → judge each finding → optionally rewrite with the corrections hidden.
+- **Summary tab**: frequent error patterns (with a *didn't know only* filter), top 5 types, the weekly trend, and a backlog of findings you have not judged yet. Choose demo samples (`samples/`), your own records (`data/`), or both.
+- The bundled demo samples were produced with prompt p1, so the default strict version filter hides them. Switch on **"이전 버전 기록도 포함"** (include older records) in the sidebar to see them.
+- **Backup (sidebar)**: download everything as a zip of the original JSONL files and merge a backup back in — imports never overwrite and never duplicate. A separate one-way CSV (one finding per row) opens in Excel for analysis or native-speaker review ([ADR 0014](docs/adr/0014-backup-export-import.md)).
+- A streak counter can be switched on in the sidebar (off by default). No quotas, no target scores.
+
+**On your phone** (no deployment — your PC is the server): put `COACH_PASSCODE=<8+ characters>` in `.env`, run `python -m tools.run_mobile`, and open the printed address from a phone on the same Wi-Fi. A plain `streamlit run app.py` is reachable from this PC only ([ADR 0016](docs/adr/0016-ci-tests-mobile-over-lan.md)).
+
+<img src="docs/images/mobile-practice.png" width="260" alt="Practice on a phone"> <img src="docs/images/mobile-summary.png" width="260" alt="Summary on a phone">
+
+## One round
+
+```mermaid
+flowchart TD
+    A["Generated task / my own Korean sentence / targeted task"] --> B["Write in Japanese<br/>stored verbatim, no normalization (A)"]
+    B --> C["LLM grading × 3<br/>meaning · error tags · minimal correction · natural rewrite (B, C)"]
+    C --> D["Code checks<br/>quote position (D) · untagged edits (E) · several errors in one tag (E2) · width"]
+    D --> E["Majority vote per edit<br/>2 of 3 or more = confirmed"]
+    E --> F["Correction built by code from confirmed tags only"]
+    F --> G["Screen: findings · Korean explanation · expression hints"]
+    G --> H["My judgment, 4 kinds → labels.jsonl"]
+    G --> I["Rewrite → revisions.jsonl (not counted)"]
+    E --> J[("attempts.jsonl")]
+    J --> K["Summary: frequent patterns · top 5 · weekly trend<br/>records from the same instrument only"]
+    H --> K
+```
 
 ## Why
 
-If you work in Japanese, you get by. But **nobody corrects you as long as the meaning comes through.**
+You can work in Japan, study, listen to podcasts and make Japanese friends, and still have **nobody who tells you, like a teacher, where your Japanese went wrong and what would have been appropriate in that scene.** As long as the meaning comes through, nobody corrects you.
 Write `友達を合う` and your reader simply hears `友達に会う` and moves on. Speech recognition is worse: it quietly "fixes" a wrong particle into the phonetically closest right one, so the mistake never reaches you.
 Years later you still use ほぼ / ほとんど / 大体 interchangeably, and Korean-shaped phrases (`ストレスを受ける`, `薬を食べる`) are still there.
 
-One goal: **catch the wrong thing as the wrong thing** — and accumulate that into a number that says what you keep getting wrong.
+So there are two goals: **catch the wrong thing as the wrong thing**, and **say what is appropriate for that scene and that listener** — and accumulate both into a number that says what you keep getting wrong.
+
+## Status (October 2026)
+
+| Item | Status |
+|---|---|
+| One round (task/input → grading → judgment → summary) | Works. 53 tests, CI on every push |
+| Real usage records | **None yet.** The features are built but have not been tried in real use |
+| Phone access | Phone-size layout checked in an automated browser, the passcode lock in tests. Not yet tried on a real phone |
+| Experiment | Results are for prompt p1. The full run for the current p2 waits until the eval set is rebuilt |
+| Not there yet | Pasting Japanese you actually wrote; "what if the listener changes" (manager / colleague / friend side by side); speaking |
+
+The grammar and measurement side came first, ahead of the original intent (pragmatics, Japanese you actually used). That gap and the plan are in [ADR 0015](docs/adr/0015-direction-check-mobile-deploy.md).
+
+**Current measurement instrument** — by default only records made with the same instrument are aggregated together.
+
+| Taxonomy | Grading prompt | Grading model | Task model | Record schema (not part of the instrument) |
+|---|---|---|---|---|
+| v1 | p2 | `gpt-5.6-terra` | `gpt-5.6-luna` | s4 |
 
 ## Design principles
 
@@ -77,74 +138,74 @@ Every tag also carries a "Korean transfer" flag. Each task carries a medium (ema
 
 ![Summary screen](docs/images/summary-grammar.png)
 
-## Reproducibility and detection experiment
+## Experiment summary
 
-**Method** ([experiments/repro.py](experiments/repro.py))
-- Eval set: 12 answers with planted errors (6 grammar mode, 6 expression mode, 2 of them error-free), covering typical Korean-speaker mistakes (`友達を合う`, `薬を食べる`, `ストレスを受ける`, `勉強しました時` …) with the expected error spans.
-- Three conditions, each graded 3 times: **plain** (type names only) / **guide** (full codebook prompt, single pass) / **vote** (codebook + 3-way majority).
-- Model `gpt-5.6-terra`, reasoning effort low. One full run = 180 API calls. All metrics computed by code.
+Twelve answers with planted errors (6 grammar, 6 expression, 2 of them error-free) were graded 3 times each under three conditions (plain instruction / codebook prompt / codebook + 3-way vote). Model `gpt-5.6-terra`; every metric is computed by code. The table is for prompt **p1** (`experiments/results/repro_20260920_032338.json`).
 
-**Result 2 — p1 prompt, taxonomy v1** (`experiments/results/repro_20260920_032338.json`)
+| Condition | Mode | Exact agreement | Span detection | Span + type | Tags on clean answers |
+|---|---|---|---|---|---|
+| plain | grammar | 0.67 | 1.00 | 0.29 | 0.00 |
+| plain | expression | 0.17 | 0.93 | 0.67 | 2.33 |
+| guide | grammar | 0.67 | **1.00** | 0.62 | 0.00 |
+| guide | expression | 0.50 | 0.81 | 0.78 | 0.67 |
+| vote | grammar | 0.67 | **1.00** | 0.58 | 0.00 |
+| vote | expression | 0.67 | 0.74 | 0.67 | 1.00 |
 
-| Condition | Mode | Exact agreement | Jaccard | Span detection | Span + type | Tags on clean answers | Unexpected tags |
-|---|---|---|---|---|---|---|---|
-| plain | grammar | 0.67 | 0.83 | 1.00 | 0.29 | 0.00 | 0.60 |
-| plain | expression | 0.17 | 0.67 | 0.93 | 0.67 | 2.33 | 0.80 |
-| guide | grammar | 0.67 | 0.86 | **1.00** | 0.62 | 0.00 | 0.07 |
-| guide | expression | 0.50 | 0.69 | 0.81 | 0.78 | 0.67 | 0.13 |
-| vote | grammar | 0.67 | 0.85 | **1.00** | 0.58 | 0.00 | 0.07 |
-| vote | expression | 0.67 | 0.82 | 0.74 | 0.67 | 1.00 | 0.20 |
+- **Grammar mode did not get dragged** (span detection 1.00). Expression mode is lower at 0.74–0.93 — the side the project's name (Pragmatics) points to is the weakest.
+- **The codebook prompt clearly beats a plain instruction**: unexpected tags 0.70 → 0.10, tags on clean answers 1.17 → 0.33.
+- **3-way voting cannot be judged at this size.** A 0.1 difference is noise with 12 items. It stays the default because it attaches a confidence ("2 of 3") to every tag.
+- **Prompt rules were not followed** ("split merged tags" was obeyed once in three runs), so the E2 and width rules moved into code.
+- Limitations: the eval set was written by Claude and graded by GPT — not a human gold standard; one label error was found this way. The prompt the app now uses (p2) has not had a full run yet.
 
-Both tables predate the word-level E2 check and the narrowed width rule, which were generalized afterwards; those runs did not keep the raw model output, so they cannot be recomputed (later runs can, via `--rescore`). The earlier run (p0, taxonomy v0) is in `experiments/results/repro_20260920_031543.json`; see [README_kr.md](README_kr.md) for both tables and the full analysis.
-
-**Current state:** the app now runs prompt p2 / schema s2 (position resolution for repeated quotes, code-built correction — [ADR 0009](docs/adr/0009-quote-resolution-version-filter.md)). A single live check passed, but the full p2 experiment is on hold until the eval set is rebuilt from real translations ([ADR 0007](docs/adr/0007-eval-set-from-user-translations.md)). The cost below is from p1; the p2 check cost about $0.04 per grading (context fields and more reasoning tokens).
-
-**What the experiment changed**
-1. Prompt rules were **not** reliably followed — "split merged tags" was obeyed once out of three times, "half-width `!?` is not an error" was mostly ignored. Both rules moved into code checks (E2 and the width filter). The project's own principle — block it in code, don't ask the model — is what the experiment supports.
-2. It found two mistakes of ours: the taxonomy priority order was wrong (collocation errors were landing in word choice), and one gold label in the eval set was simply wrong.
-3. A new drag path appeared: for `その→あの` the model left the minimal correction alone and silently fixed it only in the natural rewrite. Now surfaced as expression hints (ADR 0013).
-
-**Conclusions (12 items — a small sample)**
-1. **Grammar mode does not get dragged**: in p1 both guide and vote found every planted error span (1.00); in p0, guide 0.96 and vote 1.00. Expression mode in p1 is plain 0.93 / guide 0.81 / vote 0.74 — lower than grammar mode, and lower the more guidance is added (apparently the price of fewer unexpected tags). Same direction as prior work reporting LLMs are strong on surface correction and weak on pragmatics.
-2. **The codebook prompt clearly beats a plain instruction** (compared within one run, all items): in p1, plain → guide moves type accuracy 0.49 → 0.71, unexpected tags 0.70 → 0.10, tags on clean answers 1.17 → 0.33. p0 points the same way (0.49 → 0.67, 0.97 → 0.27, 1.33 → 0.50).
-3. **3-way voting cannot be judged at this sample size.** A 0.1 difference is noise with 12 items. It is kept as the default because it attaches a confidence ("2 of 3") to every tag.
-4. **Agreement is still low** (exact 0.5–0.67). Spans are stable; the type label wobbles at category boundaries.
-
-**Limitations**
-- The eval set was written by Claude and graded by GPT. Different models, but **not a human gold standard** — one label error was found this way. Native review is the cheapest next improvement.
-- "Top 5" means "most frequent in the tasks you happened to get". Different topics elicit different errors.
-- The eval set is still shaped by one illustrative example the author gave; see [ADR 0007](docs/adr/0007-eval-set-from-user-translations.md) for the plan to rebuild it from real translations.
+Method, metric definitions, the p0 run, per-item analysis and how to run it (in Korean): **[experiments/README.md](experiments/README.md)**
 
 ## Cost
 
-Computed from the actual token usage in the result files (`gpt-5.6-terra`: $2 in / $12 out per 1M tokens, 2026-09).
+`gpt-5.6-terra`: $2 in / $12 out per 1M tokens (2026-09). p1 is computed from the token usage in the result files, p2 from one live check. p2 costs about twice as much (context fields and more reasoning tokens).
 
-| Item | Calls | Cost |
-|---|---|---|
-| One grading call (~1,500 in / ~350 out+reasoning) | 1 | ~$0.007 |
-| **One grading in the app** (3-way vote) | 3 | **~$0.02** |
-| One task generation (`gpt-5.6-luna`) | 1 | <$0.001 |
-| One full experiment | 180 | ~$1.2 |
+| Item | Calls | p1 | p2 (current) |
+|---|---|---|---|
+| **One grading in the app** (3-way vote) | 3 | ~$0.02 | **~$0.04** |
+| Re-grading a rewrite | 3 | — | ~$0.04 |
+| One task generation (`gpt-5.6-luna`) | 1 | <$0.001 | <$0.001 |
+| One full experiment | 180 | ~$1.2 | ~$1.3 (estimate) |
 
-## Running it
+## Privacy and operation
 
-```powershell
-python -m venv .venv
-.venv\Scripts\python -m pip install -r requirements.txt
-copy .env.example .env        # put in OPENAI_API_KEY (or GEMINI_API_KEY + LLM_PROVIDER=gemini)
-.venv\Scripts\streamlit run app.py
+- Records are stored only as JSONL in `data/` on this PC — git-ignored and append-only (never edited). Backup zips and analysis CSVs are git-ignored too.
+- The only thing that leaves the PC is the task and answer text sent to the LLM API (OpenAI or Gemini) for grading and task generation.
+- By default the app is reachable from this PC only (`.streamlit/config.toml`). The only way to open it to the network is `tools.run_mobile`, which refuses to start without a passcode. Traffic is not encrypted, so use it at home or over a private network.
+- Nothing is deployed. There is no separate backend: one Streamlit process does the UI, the LLM calls and the file storage.
+- A personal-information gate (developed separately) will be connected later. Then the original text stays local, and grading and quote checks run on the masked sentence.
+
+## Layout
+
+```
+app.py                  Streamlit UI (practice / summary)
+coach/taxonomy.py       error taxonomy v1 (order = priority)
+coach/prompts.py        task and grading prompts
+coach/schemas.py        LLM output and record schema (schema version)
+coach/llm.py            the only place that calls an LLM
+coach/verify.py         anti-drag checks D, E, E2 (language-agnostic)
+coach/lang_ja.py        Japanese layer: word chunking, non-error differences
+coach/voting.py         3-way majority voting
+coach/stats.py          aggregation (pure functions)
+coach/corpus.py         personal corpus: patterns, typo filtering, frequent errors
+coach/store.py          JSONL read/write (append-only)
+coach/backup.py         backup zip export / merge-import, analysis CSV
+experiments/            eval set, experiment script, results (raw model output kept)
+tests/                  tests that run without an LLM (run in CI)
+tools/run_mobile.py     phone access over the LAN (passcode required)
+tools/screenshots.py    README screenshots
+tools/session_handoff.py  session handoff hook
+docs/adr/               architecture decision records
+docs/HANDOFF.md         development session handoff (where work stopped)
+.github/workflows/      CI (tests only, no deployment)
+samples/                demo samples, synthetic (committed)
+data/                   your own records, JSONL, append-only (git-ignored)
 ```
 
-- Practice tab: choose *generated task*, *my own Korean sentence* or *targeted practice* → write in Japanese → grade → judge each finding → optionally rewrite with the corrections hidden.
-- Summary tab: frequent error patterns (with a *didn't know only* filter), top 5 types, and a backlog of findings you have not judged yet.
-- Choose demo samples (`samples/`), your own records (`data/`), or both.
-- Backup (sidebar): download everything as a zip of the original JSONL files and merge a backup back in — imports never overwrite and never duplicate. A separate one-way CSV (one finding per row) opens in Excel for analysis or native-speaker review ([ADR 0014](docs/adr/0014-backup-export-import.md)).
-- A streak counter can be switched on in the sidebar (off by default). No quotas, no target scores.
-
-**On your phone** (no deployment — your PC is the server): put `COACH_PASSCODE=<8+ characters>` in `.env`, run `python -m tools.run_mobile`, and open the printed address from a phone on the same Wi-Fi. A plain `streamlit run app.py` is bound to localhost; the app is opened to the network only through this command, and it refuses to start without a passcode. Traffic is not encrypted, so use it at home or over a private network only ([ADR 0016](docs/adr/0016-ci-tests-mobile-over-lan.md)).
-
-<img src="docs/images/mobile-practice.png" width="260" alt="Practice on a phone"> <img src="docs/images/mobile-summary.png" width="260" alt="Summary on a phone">
-- The bundled demo samples were produced with prompt p1. Under the default strict version filter they are hidden; switch on **"이전 버전 기록도 포함"** (include older records) in the sidebar to see them.
+Tests, experiments and screenshots:
 
 ```powershell
 .venv\Scripts\python -m pytest -q                    # code checks, voting, aggregation (no API)
@@ -153,31 +214,26 @@ copy .env.example .env        # put in OPENAI_API_KEY (or GEMINI_API_KEY + LLM_P
 .venv\Scripts\python -m tools.screenshots            # regenerate README screenshots
 ```
 
-## Layout
-
-```
-app.py                  Streamlit UI
-coach/taxonomy.py       error taxonomy v1 (order = priority)
-coach/prompts.py        task and grading prompts
-coach/llm.py            the only place that calls an LLM
-coach/verify.py         anti-drag checks D, E, E2 (language-agnostic)
-coach/lang_ja.py        Japanese layer: word chunking, non-error differences
-coach/corpus.py         personal corpus: patterns, typo filtering, frequent errors
-coach/backup.py         backup zip export / merge-import, analysis CSV
-coach/voting.py         3-way majority voting
-coach/stats.py          aggregation (pure functions)
-experiments/            eval set, experiment script, results (raw model output kept)
-docs/adr/               architecture decision records
-samples/                demo samples, synthetic (committed)
-data/                   your own records, JSONL, append-only (git-ignored)
-```
-
 ## Next steps
 
-- Rebuild the eval set from the user's real translations, labeled typo vs. misconception, reviewed by a native speaker, 30+ items ([ADR 0007](docs/adr/0007-eval-set-from-user-translations.md))
+**Back to the original intent** ([ADR 0015](docs/adr/0015-direction-check-mobile-deploy.md))
+- Japanese you actually wrote: paste it, pick only the scene (medium and listener), and grade. Importing Japanese questions once asked to an in-house Copilot as `source: "imported"` belongs here too
+- What if the listener changes: show side by side how the same meaning is said to a manager, a colleague and a friend, and explain the differences
+
+**Measurement**
+- Eval set v2: from the user's real translations, labeled typo vs. misconception, reviewed by a native speaker, 30+ items, at least 30% error-free ([ADR 0007](docs/adr/0007-eval-set-from-user-translations.md)) → p2 experiment → update the numbers in this README
+- Native-speaker review: once "the flag is wrong" judgments accumulate, measure precision, recall and explanation accuracy from the analysis CSV
+
+**Operation**
+- Connect the personal-information gate
+- Deployment (server + authentication + budget cap) is reconsidered only after real use shows the app is worth it
+
+**Out of scope for now**
+- Speech input: only with recognition that does not language-model-correct the learner's mistakes away (kana-level)
+- Scheduled tests, spaced repetition, login
 - Dynamic few-shot: retrieve past cases of the same error type once records accumulate
-- Out of scope for now: speech input, scheduled tests, spaced repetition, more charts, login, deployment
-  - Speech input only makes sense with recognition that does not language-model-correct the learner's mistakes away
+
+Reasons behind the design and the alternatives that were dropped are in [docs/adr/](docs/adr/README.md).
 
 ## License
 

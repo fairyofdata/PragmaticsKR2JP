@@ -26,3 +26,4 @@ ADR(Architecture Decision Record) = 중요한 설계 결정 하나를 "맥락 �
 | [0015](0015-direction-check-mobile-deploy.md) | 방향 점검: 최초 기획과의 정렬, 모바일 UI·Firebase 배포 검토 | 검토 (1단계는 0016 으로 채택) | 2026-10-03 |
 | [0016](0016-ci-tests-mobile-over-lan.md) | CI(테스트만), 폰 화면 정리, 같은 망에서 폰 접속 | 채택 | 2026-10-03 |
 | [0017](0017-session-handoff-hook.md) | 세션 인수인계 문서와 SessionStart 훅 | 채택 | 2026-10-07 |
+| [0018](0018-readme-restructure-korean-source.md) | README 재구성: 한국어 원본, 상태·측정 도구를 앞에, 실험 상세는 분리 | 채택 | 2026-10-26 |
