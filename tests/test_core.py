@@ -234,3 +234,23 @@ def test_streak():
     recs = [record(f"2026-09-{d}T10:00:00+09:00", []) for d in (17, 18, 19)]
     assert streak_days(recs, today=date(2026, 9, 20)) == 3   # 오늘 아직 안 해도 유지
     assert streak_days(recs, today=date(2026, 9, 21)) == 0
+
+
+def test_check_contrast_drops_unquotable_and_identical_points():
+    from coach.verify import check_contrast
+    texts = ["少々お待ちください。", "ちょっと待って。"]
+    kept, dropped = check_contrast(texts, [
+        {"aspect_ko": "정도", "forms": ["少々", "ちょっと"], "explanation_ko": ""},
+        {"aspect_ko": "한쪽에만", "forms": ["ください", ""], "explanation_ko": ""},
+        {"aspect_ko": "없는 인용", "forms": ["お待ちくださいませ", "待って"], "explanation_ko": ""},
+        {"aspect_ko": "차이 없음", "forms": ["待", "待"], "explanation_ko": ""},
+        {"aspect_ko": "개수 다름", "forms": ["少々"], "explanation_ko": ""},
+    ])
+    assert [p["aspect_ko"] for p in kept] == ["정도", "한쪽에만"] and dropped == 3
+    assert kept[0]["spans"] == [(0, 2), (0, 4)] and kept[1]["spans"][1] is None
+
+
+def test_input_mix_counts_old_records_as_generated():
+    from coach.stats import input_mix
+    assert input_mix([{"input_mode": "own_japanese"}, {}, {"input_mode": "generated"}]) == [
+        ("generated", 2), ("own_japanese", 1)]

@@ -23,8 +23,10 @@ from datetime import datetime
 from dotenv import load_dotenv
 from pydantic import ValidationError
 
-from .prompts import PROMPT_VERSION, grade_prompt, targeted_task_prompt, task_prompt
-from .schemas import SCHEMA_VERSION, Attempt, GradeResult, Task
+from .prompts import (CONTRAST_RELATIONSHIPS, PROMPT_VERSION, contrast_prompt, grade_prompt,
+                      targeted_task_prompt, task_prompt)
+from .schemas import SCHEMA_VERSION, Attempt, GradeResult, RegisterContrast, Task
+from .verify import check_contrast
 from .taxonomy import TAXONOMY_VERSION, codes_for_mode
 from .voting import combine
 
@@ -189,6 +191,29 @@ def own_korean_task(source_ko, medium, relationship):
     """사용자가 가져온 한국어 문장을 과제로 만든다 (LLM 호출 없음). 채점 프롬프트는 그대로 쓴다."""
     return Task(situation_ko=f"다음 한국어를 일본어로 옮긴다.\n{source_ko}",
                 instruction_ko=f"매체({medium})와 상대({relationship})에 맞는 일본어로 옮기세요.")
+
+
+def own_japanese_task(context_ko, medium, relationship):
+    """사용자가 실제로 쓴 일본어를 과제 형식에 맞춘다 (LLM 호출 없음). 채점 프롬프트는 그대로 쓴다."""
+    situation = "과제에 대한 답이 아니라, 사용자가 실제로 쓴 일본어다."
+    if context_ko:
+        situation += f"\n쓴 상황: {context_ko}"
+    return Task(situation_ko=situation,
+                instruction_ko=f"매체({medium})로 상대({relationship})에게 쓴 글이다.")
+
+
+def register_contrast(meaning_ko, reference_ja, medium, relationship):
+    """같은 뜻을 상대별로 나란히 (ADR 0019). 1회 호출. 돌려주는 것: (화면용 dict, 토큰 사용량).
+    모델이 짚은 표현이 그 문장에 글자 그대로 있는지는 코드가 확인한다 (verify.check_contrast)."""
+    prompt = contrast_prompt(meaning_ko, reference_ja, medium, relationship, CONTRAST_RELATIONSHIPS)
+    text, usage = _call(GRADER_MODEL, prompt, RegisterContrast.model_json_schema(), GRADER_REASONING)
+    result = RegisterContrast.model_validate_json(text)
+    if len(result.variants) != len(CONTRAST_RELATIONSHIPS):
+        raise ValueError("상대별 문장의 개수가 요청과 다릅니다. 다시 시도해 주세요.")
+    texts = [v.text for v in result.variants]   # 상대 이름은 모델이 쓴 것이 아니라 요청한 목록을 쓴다
+    points, dropped = check_contrast(texts, [p.model_dump() for p in result.points])
+    return {"relationships": CONTRAST_RELATIONSHIPS, "texts": texts, "points": points,
+            "dropped_points": dropped, "base_relationship": relationship}, usage
 
 
 def grade(answer, task, mode, topic, medium, relationship, source="app", n_samples=None,

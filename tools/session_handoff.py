@@ -3,7 +3,7 @@
 .claude/settings.local.json 의 SessionStart 훅이 이 스크립트를 실행한다.
 출력은 JSON 한 덩어리이고, additionalContext 안의 글이 새 세션에 전달된다.
 
-- docs/HANDOFF.md 전체
+- docs/HANDOFF.md 전체 (git 제외, 이 PC 에만 — 없으면 안내만 하고 넘어간다)
 - 지금의 git 상태 (마지막 커밋, 커밋 안 된 변경, 푸시 안 된 커밋) — 문서가 낡았는지 알 수 있게
 
 표준 라이브러리만 쓴다 (가상환경 없이 시스템 파이썬으로도 돌아야 한다).

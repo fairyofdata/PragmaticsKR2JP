@@ -205,6 +205,26 @@ def check_revision(answer, rewrite, tags):
     return results
 
 
+def check_contrast(texts, points):
+    """'상대가 바뀌면 어떻게' 의 인용 검증. 모델이 "이 상대에게는 이 표현"이라고 짚은 것이
+    그 문장에 글자 그대로 있는지 확인한다 (채점의 인용 검증과 같은 원칙).
+
+    texts: 상대별 문장. points: [{aspect_ko, forms, explanation_ko}], forms 는 texts 와 같은 순서.
+    돌려주는 것: (통과한 points — 각각 spans 추가: 문장마다 (시작, 끝) 또는 None, 버린 개수).
+    버리는 경우: forms 개수가 다름 / 문장에 없는 표현을 인용 / 모든 상대에서 표현이 같음(차이가 아님).
+    """
+    kept, dropped = [], 0
+    for p in points:
+        forms = p["forms"]
+        spans = [find_span(t, f) if f else None for t, f in zip(texts, forms)]
+        missing = any(f and s is None for f, s in zip(forms, spans))
+        if len(forms) != len(texts) or missing or len(set(forms)) < 2:
+            dropped += 1
+            continue
+        kept.append({**p, "spans": spans})
+    return kept, dropped
+
+
 def highlight_html(answer, spans):
     """화면용: 틀린 자리만 표시하고 교정은 보여주지 않는다 (고쳐 쓰기에서 스스로 고치게 하려고)."""
     out, pos = [], 0

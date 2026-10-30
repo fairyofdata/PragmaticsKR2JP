@@ -27,3 +27,6 @@ ADR(Architecture Decision Record) = 중요한 설계 결정 하나를 "맥락 �
 | [0016](0016-ci-tests-mobile-over-lan.md) | CI(테스트만), 폰 화면 정리, 같은 망에서 폰 접속 | 채택 | 2026-10-03 |
 | [0017](0017-session-handoff-hook.md) | 세션 인수인계 문서와 SessionStart 훅 | 채택 | 2026-10-07 |
 | [0018](0018-readme-restructure-korean-source.md) | README 재구성: 한국어 원본, 상태·측정 도구를 앞에, 실험 상세는 분리 | 채택 | 2026-10-26 |
+| [0019](0019-own-japanese-input-register-contrast.md) | 실제로 쓴 일본어 입력, 상대가 바뀌면 어떻게, PII 게이트 연계 보류 | 채택 (배포 방식은 미정) | 2026-10-07 |
+| [0020](0020-import-format.md) | 외부 교정 기록의 가져오기 형식: 오답 노트가 아니라 문장 쌍(JSONL) | 제안 | 2026-10-07 |
+| [0021](0021-public-repo-local-notes.md) | 공개 저장소에서 개인·로컬 서술을 분리한다 (CLAUDE.local.md, HANDOFF 로컬 전용) | 채택 | 2026-10-31 |

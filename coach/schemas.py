@@ -7,9 +7,10 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-SCHEMA_VERSION = "s4"  # s0→s1: dropped_width, merged_tags / s1→s2: 인용 문맥, 모호 인용 수, 확정 태그 교정문
+SCHEMA_VERSION = "s5"  # s0→s1: dropped_width, merged_tags / s1→s2: 인용 문맥, 모호 인용 수, 확정 태그 교정문
                        # s2→s3: 입력 방식, 한국어 원문, 걸린 시간 (개인 코퍼스용)
                        # s3→s4: 입력 방식 'targeted'(약점 겨냥 연습)와 겨냥한 패턴, 고쳐 쓰기 기록(Revision)
+                       # s4→s5: 입력 방식 'own_japanese'(실제로 쓴 일본어, 걸린 시간 없음)
                        # 스키마는 저장 형식이라 집계 필터에는 쓰지 않는다 (ADR 0012)
 
 
@@ -39,6 +40,23 @@ class GradeResult(BaseModel):
     errors: list[ErrorTag]
 
 
+class RegisterVariant(BaseModel):
+    relationship: str      # 상대 (요청한 목록과 같은 순서)
+    text: str              # 그 상대에게 같은 뜻을 전하는 일본어
+
+
+class RegisterPoint(BaseModel):
+    aspect_ko: str         # 무엇이 달라지나 (예: 의뢰 표현, 문말, 호칭)
+    forms: list[str]       # 상대마다 그 자리에 쓰인 표현. variants 와 같은 순서, 그 글에 글자 그대로. 없으면 빈 문자열
+    explanation_ko: str    # 왜 달라지는지
+
+
+class RegisterContrast(BaseModel):
+    """'상대가 바뀌면 어떻게' (ADR 0019). 학습용 설명이라 집계·저장 대상이 아니다."""
+    variants: list[RegisterVariant]
+    points: list[RegisterPoint]
+
+
 # ---------- 코드가 만들어 저장하는 것 ----------
 
 class VotedTag(ErrorTag):
@@ -63,7 +81,8 @@ class Attempt(BaseModel):
     relationship: str
     task: Task
     # 앱이 낸 과제 / 내가 가져온 한국어 문장 (s3~) / 약점 겨냥 연습 (s4~, 기본 집계에서 뺀다)
-    input_mode: Literal["generated", "own_korean", "targeted"] = "generated"
+    # / 실제로 쓴 일본어 (s5~, 집계에 넣되 구성을 화면에 보여준다)
+    input_mode: Literal["generated", "own_korean", "targeted", "own_japanese"] = "generated"
     target: dict | None = None         # targeted 일 때 겨냥한 패턴 {type, edit, governing} (s4~)
     source_ko: str = ""                # own_korean 일 때 사용자가 가져온 한국어 원문 (s3~)
     duration_sec: int | None = None    # 과제를 받고 채점을 누를 때까지 걸린 시간 (s3~)

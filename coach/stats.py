@@ -1,6 +1,6 @@
 """집계. LLM을 부르지 않는 순수 함수만 둔다. 같은 입력이면 항상 같은 출력."""
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import date, timedelta
 
 from .taxonomy import OUT_OF_MODE, name_ko
@@ -121,6 +121,13 @@ def weekly_trend(records, codes, exclude_keys=frozenset()):
             "rates": {code: sum(has(r, code) for r in rs) / len(rs) for code in codes},
         })
     return table
+
+
+def input_mix(records):
+    """기록이 어떤 입력 방식으로 만들어졌는지 건수 (많은 순). 조건이 다른 기록이 섞여 있음을 화면에 보여주려고.
+    예전 기록에는 input_mode 가 없다 → 앱이 낸 과제."""
+    counts = Counter(r.get("input_mode", "generated") for r in records)
+    return counts.most_common()
 
 
 def summary_counts(records):

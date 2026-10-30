@@ -53,6 +53,36 @@ def targeted_task_prompt(target, medium, relationship):
 """
 
 
+# '상대가 바뀌면 어떻게' 에서 나란히 보여줄 상대 (격식이 높은 쪽부터). 코드가 정한다.
+CONTRAST_RELATIONSHIPS = ["사외 거래처", "사내 상사", "사내 동료", "친한 친구"]
+
+
+def contrast_prompt(meaning_ko, reference_ja, medium, relationship, relationships):
+    """같은 뜻을 상대별로 쓰고, 달라지는 곳을 짚게 한다 (ADR 0019).
+    채점 프롬프트(측정 도구)와 별개라 PROMPT_VERSION 에 영향이 없다. 결과는 집계에 쓰지 않는다."""
+    listed = "\n".join(f"{i}. {rel}" for i, rel in enumerate(relationships, 1))
+    return f"""당신은 한국어 모어 화자에게 일본어의 화용(상대에 따른 말씨)을 가르치는 교사입니다.
+아래의 뜻을, 상대만 바꿔서 각각 일본어로 쓰세요. 매체는 모두 {medium} 입니다.
+
+전하려는 뜻: {meaning_ko}
+참고 (상대가 '{relationship}'일 때의 문장): {reference_ja}
+
+상대 목록 (이 순서대로):
+{listed}
+
+규칙:
+- variants: 상대 목록과 같은 순서, 같은 개수. 전하는 내용은 같게 하고 말씨만 그 상대에 맞춘다.
+  그 상대에게 실제로 쓸 법한 문장으로 쓴다. 차이를 보여주려고 과장하지 않는다.
+  두 상대에게 같은 표현을 쓰는 것이 자연스러우면 같게 쓴다.
+- points: 상대에 따라 달라진 곳을 2~5개. 가장 중요한 차이부터.
+  - aspect_ko: 무엇이 달라지나 (한국어로 짧게).
+  - forms: 상대 목록과 같은 순서, 같은 개수. 각 문장에서 그 자리에 쓰인 표현을 **글자 그대로** 복사한다.
+    그 상대의 문장에 해당 표현이 아예 없으면 빈 문자열.
+  - explanation_ko: 한국어로 2~3문장. 왜 상대에 따라 달라지는지, 그리고 한국어의 감각대로 쓰면 어디서 어긋나는지.
+- 점수나 수준 평가는 쓰지 않는다.
+"""
+
+
 def _codebook(mode):
     lines = []
     for code in codes_for_mode(mode):

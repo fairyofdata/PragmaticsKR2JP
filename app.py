@@ -20,7 +20,7 @@ from coach.corpus import (EXCLUDED_LABELS, LABELS, excluded_keys, frequent_patte
                           target_outcome, target_summary, unlabeled)
 from coach.prompts import PROMPT_VERSION, TOPICS
 from coach.schemas import SCHEMA_VERSION, Revision, RevisionCheck
-from coach.stats import (filter_records, streak_days, summary_counts, tag_key, top_types,
+from coach.stats import (filter_records, input_mix, streak_days, summary_counts, tag_key, top_types,
                          version_mix, weekly_trend)
 from coach.taxonomy import MODES, OUT_OF_MODE, TAXONOMY_VERSION, name_ko
 from coach.verify import check_revision, diff_html, highlight_html, similarity, word_edits
@@ -29,7 +29,8 @@ load_dotenv()
 st.set_page_config(page_title="일본어 작문 코치", page_icon="✍️", layout="centered")
 
 MODE_SHORT = {"grammar": "문법 (정확성)", "expression": "표현 (적절성)"}   # 폰 화면에 들어가는 짧은 이름
-INPUT_KINDS = {"generated": "앱이 낸 과제", "own_korean": "내 한국어 문장", "targeted": "약점 겨냥 연습"}
+INPUT_KINDS = {"generated": "앱이 낸 과제", "own_korean": "내 한국어 문장",
+               "own_japanese": "실제로 쓴 일본어", "targeted": "약점 겨냥 연습"}
 REVISION_STATUS = {"fixed": "고침", "unchanged": "그대로 (안 고침)", "changed": "다르게 고침 (다시 채점으로 확인)"}
 TARGET_OUTCOME = {"repeated": "또 틀림", "used": "맞게 씀", "not_used": "이번 답에서 그 표현을 쓰지 않음"}
 MEDIUMS = ["메일", "채팅", "구두"]
@@ -223,6 +224,39 @@ def show_result(r):
         st.caption(f"원문에 없는 인용이라 버린 태그: {r['dropped_quotes']}건")
 
 
+def contrast_view(r):
+    """결과 아래의 '상대를 바꿔 보기' (ADR 0019). 같은 뜻을 상대별로 나란히 보여준다.
+    학습용 설명이라 집계에 넣지 않고 저장도 하지 않는다 (새 과제를 시작하면 사라진다)."""
+    st.divider()
+    st.markdown("**상대가 바뀌면 어떻게**")
+    st.caption("방금 쓴 글의 뜻을 상대만 바꿔서 나란히 봅니다. 참고용 설명이고 집계에는 넣지 않습니다.")
+    shown = st.session_state.get("contrast")
+    if not (shown and shown["attempt_id"] == r["id"]):
+        if st.button("상대를 바꿔 보기 (1회 호출, 약 $0.01~0.02 추정)"):
+            with st.spinner("상대별 문장을 만드는 중..."):
+                try:
+                    contrast, _ = llm.register_contrast(r["intended_meaning_ko"], r["natural_version"],
+                                                        r["medium"], r["relationship"])
+                except ValueError as e:
+                    st.error(str(e))
+                    return
+            st.session_state.contrast = {**contrast, "attempt_id": r["id"]}
+            st.rerun()
+        return
+    for i, (rel, text) in enumerate(zip(shown["relationships"], shown["texts"])):
+        here = " (이번 장면)" if rel == shown["base_relationship"] else ""
+        spans = [p["spans"][i] for p in shown["points"] if p["spans"][i]]
+        st.markdown(f"**{rel}**{here}  \n" + highlight_html(text, spans), unsafe_allow_html=True)
+    for p in shown["points"]:
+        with st.container(border=True):
+            forms = " / ".join(f"{rel}: `{f}`" if f else f"{rel}: (없음)"
+                               for rel, f in zip(shown["relationships"], p["forms"]))
+            st.markdown(f"**{p['aspect_ko']}**  \n{forms}  \n{p['explanation_ko']}")
+    if shown["dropped_points"]:
+        st.caption(f"문장에 없는 표현을 인용했거나 차이가 없어서 버린 설명: {shown['dropped_points']}건")
+    st.caption("상대별 문장은 모델이 1회 쓴 것입니다. 채점처럼 여러 번 돌려 확인한 것이 아니니 참고로만 보세요.")
+
+
 def confirmed_tags(r):
     return [e for e in r["errors"] if "start" in e]
 
@@ -303,7 +337,19 @@ def start_task(task, topic_name, medium, relationship, input_mode, source_ko="",
     st.session_state.update(task=task, topic=topic_name, medium=medium, relationship=relationship,
                             input_mode=input_mode, source_ko=source_ko, target=target,
                             started_at=time.time(), result=None, answer_text="",
-                            revising=None, revision=None)
+                            revising=None, revision=None, contrast=None)
+
+
+def grade_and_store(answer, duration):
+    """지금 세션의 과제로 채점하고 기록에 추가한다."""
+    with st.spinner(f"{llm.N_SAMPLES}번 채점해서 합치는 중..."):
+        attempt = llm.grade(answer, st.session_state.task, mode, st.session_state.topic,
+                            st.session_state.medium, st.session_state.relationship,
+                            input_mode=st.session_state.input_mode,
+                            source_ko=st.session_state.source_ko, duration_sec=duration,
+                            target=st.session_state.get("target"))
+    store.append(attempt)
+    st.session_state.update(result=attempt.model_dump(), revising=None, revision=None, contrast=None)
 
 
 tab_practice, tab_summary = st.tabs(["연습", "요약"])
@@ -333,6 +379,18 @@ with tab_practice:
         if st.button("이 문장으로 시작", type="primary", disabled=not source_ko.strip()):
             start_task(llm.own_korean_task(source_ko.strip(), medium, relationship),
                        "내 문장", medium, relationship, "own_korean", source_ko.strip())
+    elif input_kind == "own_japanese":
+        st.caption("메일·채팅 등 실제로 쓴 일본어를 그대로 붙여 넣으세요. 고치거나 다듬지 않은 원래 글이어야 "
+                   "실제 약점이 기록됩니다. 걸린 시간은 재지 않습니다.")
+        own_ja = st.text_area("실제로 쓴 일본어", height=150, key="own_ja_input")
+        col1, col2 = st.columns(2)
+        medium = col1.selectbox("매체", MEDIUMS, key="own_ja_medium")
+        relationship = col2.selectbox("상대", RELATIONSHIPS, key="own_ja_relationship")
+        context_ko = st.text_input("어떤 상황에서 쓴 글인지 (선택, 한국어 한 줄)", key="own_ja_context")
+        if st.button(f"채점 ({llm.N_SAMPLES}회, 약 $0.04)", type="primary", disabled=not own_ja.strip()):
+            start_task(llm.own_japanese_task(context_ko.strip(), medium, relationship),
+                       "실제 글", medium, relationship, "own_japanese")
+            grade_and_store(own_ja, None)   # 원문 그대로 (정규화 없음). 이미 쓴 글이라 걸린 시간은 없다
     else:  # targeted
         st.caption("반복해서 틀리는 패턴을 쓰게 되는 과제를 받습니다. 겨냥 연습은 일부러 약점을 유도하므로 "
                    "빈출 오답·상위 5개·추이에는 넣지 않고, 요약 탭에 따로 결과를 보여줍니다.")
@@ -353,7 +411,8 @@ with tab_practice:
                 start_task(task, "약점 겨냥", medium, relationship, "targeted", target=target)
 
     task = st.session_state.get("task")
-    if task:
+    # 실제로 쓴 일본어는 위에서 바로 채점했으므로 과제·답 입력란을 다시 보여주지 않는다
+    if task and st.session_state.input_mode != "own_japanese":
         st.caption(f"{st.session_state.topic} · {st.session_state.medium} · "
                    f"상대: {st.session_state.relationship}")
         st.markdown(f"**상황** {task.situation_ko}")
@@ -361,15 +420,7 @@ with tab_practice:
         answer = st.text_area("일본어로 쓰기", height=150, key="answer_text")
 
         if st.button("채점", disabled=not answer.strip()):
-            duration = int(time.time() - st.session_state.get("started_at", time.time()))
-            with st.spinner(f"{llm.N_SAMPLES}번 채점해서 합치는 중..."):
-                attempt = llm.grade(answer, task, mode, st.session_state.topic,
-                                    st.session_state.medium, st.session_state.relationship,
-                                    input_mode=st.session_state.input_mode,
-                                    source_ko=st.session_state.source_ko, duration_sec=duration,
-                                    target=st.session_state.get("target"))
-            store.append(attempt)
-            st.session_state.update(result=attempt.model_dump(), revising=None, revision=None)
+            grade_and_store(answer, int(time.time() - st.session_state.get("started_at", time.time())))
 
     result = st.session_state.get("result")
     if result:
@@ -382,6 +433,7 @@ with tab_practice:
                 box = st.error if outcome == "repeated" else st.success if outcome == "used" else st.info
                 box(f"겨냥한 패턴 `{pattern_text(result['target'])}`: {TARGET_OUTCOME[outcome]}")
             show_result(result)
+            contrast_view(result)
             revision_entry(result)
 
 # ---------- 요약 ----------
@@ -394,6 +446,10 @@ with tab_summary:
                f"모델 {CURRENT['model']}"
                + (f" — 이전 버전 기록 {excluded}건 제외 (사이드바에서 포함 가능)" if excluded else "")
                + (f" · 약점 겨냥 연습 {len(targeted)}건은 아래 따로" if targeted else ""))
+    kinds = input_mix(records)
+    if len(kinds) > 1 or any(kind == "own_japanese" for kind, _ in kinds):
+        st.caption("입력 방식 구성: " + " · ".join(f"{INPUT_KINDS.get(kind, kind)} {n}건" for kind, n in kinds)
+                   + " — 실제로 쓴 일본어는 사전을 썼을 수도 있는 글이라 연습과 조건이 다릅니다. 걸린 시간에는 넣지 않습니다.")
     if include_older:
         mix = version_mix(records)
         if len(mix) > 1:

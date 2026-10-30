@@ -18,3 +18,25 @@ def test_grade_records_own_korean_fields(monkeypatch):
     assert attempt.schema_version == SCHEMA_VERSION
     assert attempt.confirmed_correction == "友達に会った。"
     assert "친구를 만났다." in attempt.task.situation_ko
+
+
+def test_own_japanese_task_has_no_korean_source_and_keeps_context():
+    task = llm.own_japanese_task("회의 일정 변경을 부탁", "메일", "사내 상사")
+    assert "회의 일정 변경을 부탁" in task.situation_ko and "사내 상사" in task.instruction_ko
+    assert "쓴 상황" not in llm.own_japanese_task("", "메일", "사내 상사").situation_ko
+
+
+def test_register_contrast_uses_requested_relationships_and_checks_quotes(monkeypatch):
+    import json
+    from coach.prompts import CONTRAST_RELATIONSHIPS
+    texts = ["ご確認いただけますでしょうか。", "ご確認いただけますか。", "確認お願いします。", "確認して。"]
+    reply = {"variants": [{"relationship": "아무 이름", "text": t} for t in texts],
+             "points": [{"aspect_ko": "의뢰", "explanation_ko": "",
+                         "forms": ["いただけますでしょうか", "いただけますか", "お願いします", "して"]},
+                        {"aspect_ko": "없는 인용", "explanation_ko": "",
+                         "forms": ["くださいませ", "いただけますか", "お願いします", "して"]}]}
+    monkeypatch.setattr(llm, "_call", lambda *a: (json.dumps(reply), {"input_tokens": 1}))
+    contrast, usage = llm.register_contrast("확인해 주세요", "確認お願いします。", "채팅", "사내 동료")
+    assert contrast["relationships"] == CONTRAST_RELATIONSHIPS and contrast["texts"] == texts
+    assert [p["aspect_ko"] for p in contrast["points"]] == ["의뢰"] and contrast["dropped_points"] == 1
+    assert contrast["points"][0]["spans"][3] == (2, 4)

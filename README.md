@@ -1,4 +1,4 @@
-<!-- Source: README_kr.md (Korean is the source; English and Japanese are translations) · synced 2026-10-26 -->
+<!-- Source: README_kr.md (Korean is the source; English and Japanese are translations) · synced 2026-10-31 -->
 
 # PragmaticsKR2JP — a Japanese writing coach for Korean speakers
 
@@ -24,7 +24,7 @@ copy .env.example .env        # put in OPENAI_API_KEY (or GEMINI_API_KEY + LLM_P
 .venv\Scripts\streamlit run app.py
 ```
 
-- **Practice tab**: choose *generated task*, *my own Korean sentence* or *targeted practice* → write in Japanese → grade → judge each finding → optionally rewrite with the corrections hidden.
+- **Practice tab**: choose *generated task*, *my own Korean sentence*, *Japanese I actually wrote* or *targeted practice* → write (or paste) Japanese → grade → judge each finding → optionally rewrite with the corrections hidden. Under the result, "what if the listener changes" shows the same meaning for each listener side by side.
 - **Summary tab**: frequent error patterns (with a *didn't know only* filter), top 5 types, the weekly trend, and a backlog of findings you have not judged yet. Choose demo samples (`samples/`), your own records (`data/`), or both.
 - The bundled demo samples were produced with prompt p1, so the default strict version filter hides them. Switch on **"이전 버전 기록도 포함"** (include older records) in the sidebar to see them.
 - **Backup (sidebar)**: download everything as a zip of the original JSONL files and merge a backup back in — imports never overwrite and never duplicate. A separate one-way CSV (one finding per row) opens in Excel for analysis or native-speaker review ([ADR 0014](docs/adr/0014-backup-export-import.md)).
@@ -63,11 +63,12 @@ So there are two goals: **catch the wrong thing as the wrong thing**, and **say 
 
 | Item | Status |
 |---|---|
-| One round (task/input → grading → judgment → summary) | Works. 53 tests, CI on every push |
+| One round (task/input → grading → judgment → summary) | Works. 58 tests, CI on every push |
 | Real usage records | **None yet.** The features are built but have not been tried in real use |
 | Phone access | Phone-size layout checked in an automated browser, the passcode lock in tests. Not yet tried on a real phone |
 | Experiment | Results are for prompt p1. The full run for the current p2 waits until the eval set is rebuilt |
-| Not there yet | Pasting Japanese you actually wrote; "what if the listener changes" (manager / colleague / friend side by side); speaking |
+| New | Pasting Japanese you actually wrote; "what if the listener changes" (client / manager / colleague / friend side by side). Both are tested with mocked responses only, not yet with the real API |
+| Not there yet | Speaking; importing correction notes prepared elsewhere |
 
 The grammar and measurement side came first, ahead of the original intent (pragmatics, Japanese you actually used). That gap and the plan are in [ADR 0015](docs/adr/0015-direction-check-mobile-deploy.md).
 
@@ -199,7 +200,6 @@ tools/run_mobile.py     phone access over the LAN (passcode required)
 tools/screenshots.py    README screenshots
 tools/session_handoff.py  session handoff hook
 docs/adr/               architecture decision records
-docs/HANDOFF.md         development session handoff (where work stopped)
 .github/workflows/      CI (tests only, no deployment)
 samples/                demo samples, synthetic (committed)
 data/                   your own records, JSONL, append-only (git-ignored)
@@ -217,8 +217,8 @@ Tests, experiments and screenshots:
 ## Next steps
 
 **Back to the original intent** ([ADR 0015](docs/adr/0015-direction-check-mobile-deploy.md))
-- Japanese you actually wrote: paste it, pick only the scene (medium and listener), and grade. Importing Japanese questions once asked to an in-house Copilot as `source: "imported"` belongs here too
-- What if the listener changes: show side by side how the same meaning is said to a manager, a colleague and a friend, and explain the differences
+- Japanese you actually wrote and "what if the listener changes" are built ([ADR 0019](docs/adr/0019-own-japanese-input-register-contrast.md)). Left: check them with the real API
+- Import: take correction notes prepared elsewhere as sentence pairs (format proposal: [ADR 0020](docs/adr/0020-import-format.md)). Importing Japanese questions once asked to another AI tool as `source: "imported"` belongs here too
 
 **Measurement**
 - Eval set v2: from the user's real translations, labeled typo vs. misconception, reviewed by a native speaker, 30+ items, at least 30% error-free ([ADR 0007](docs/adr/0007-eval-set-from-user-translations.md)) → p2 experiment → update the numbers in this README

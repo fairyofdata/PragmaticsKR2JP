@@ -8,3 +8,8 @@ data/
 # 백업·분석용 내보내기 파일 (내가 쓴 글이 들어 있다. 프로젝트 폴더에 저장해도 올라가지 않게)
 pragmatics-backup-*.zip
 pragmatics-tags-*.csv
+# 출처 쪽 사정이 적힌 메모·지시문 (공개 저장소에 올리지 않는다, 이 PC 에만)
+private/
+# 개인 프로필·일하는 방식·세션 인수인계 (공개 저장소에 올리지 않는다, ADR 0021)
+CLAUDE.local.md
+docs/HANDOFF.md
