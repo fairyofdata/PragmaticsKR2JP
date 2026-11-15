@@ -1,4 +1,4 @@
-"""세션 인수인계 훅: 새 세션에 넘길 글을 올바른 형식으로 내보내는지."""
+"""세션 시작 훅: 새 세션에 지금의 git 상태를 올바른 형식으로 내보내는지 (ADR 0022 — 작업 상황 문서 state.md 는 @state.md 가 읽는다)."""
 
 import json
 import subprocess
@@ -10,14 +10,10 @@ from tools import session_handoff
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def test_context_contains_handoff_and_repo_state(monkeypatch, tmp_path):
-    # HANDOFF 는 git 에 없으므로(ADR 0021) 임시 문서로 확인한다
-    handoff = tmp_path / "HANDOFF.md"
-    handoff.write_text("# 인수인계\n\n## 1. 지금 멈춘 지점\n", encoding="utf-8")
-    monkeypatch.setattr(session_handoff, "HANDOFF", handoff)
+def test_context_contains_repo_state_and_points_to_state_md():
     context = session_handoff.build_context()
-    assert "# 인수인계" in context and "지금 멈춘 지점" in context
     assert "## 지금의 저장소 상태" in context and "마지막 커밋" in context
+    assert "state.md" in context                               # 문서가 낡았을 때 무엇을 고칠지 알려 준다
 
 
 def test_hook_prints_valid_utf8_json_and_exits_zero():
@@ -30,7 +26,5 @@ def test_hook_prints_valid_utf8_json_and_exits_zero():
     assert out["hookEventName"] == "SessionStart" and "지금의 저장소 상태" in out["additionalContext"]
 
 
-def test_missing_handoff_does_not_break_session_start(monkeypatch, tmp_path):
-    monkeypatch.setattr(session_handoff, "HANDOFF", tmp_path / "nope.md")
-    assert "CLAUDE.md" in session_handoff.build_context()      # 문서가 없어도 안내만 하고 넘어간다
+def test_main_returns_zero():
     assert session_handoff.main() == 0
