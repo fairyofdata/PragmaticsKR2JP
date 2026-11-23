@@ -90,11 +90,12 @@
 - 결정을 뒤집을 때는 기존 ADR 을 지우지 않고 상태를 "대체됨 (→ 새 번호)"으로 바꾼다.
 - ADR 을 쓰면 state.md (로컬) 도 함께 갱신한다.
 
-## 세션 규칙 (표준 하네스 v2, ADR 0022)
+## 세션 규칙 (표준 하네스 v3, ADR 0022·0023)
 - 지금 멈춘 지점·다음 작업·답을 기다리는 질문·보류·미확인은 저장소 루트 `state.md` (git 제외, 이 PC 에만 — ADR 0021). `CLAUDE.local.md` 의 `@state.md` 로 매 세션 읽힌다. 원칙·구조는 이 파일, 결정의 이유는 ADR, 진행 상태는 state.md 에만 둔다.
 - 응답을 시작할 때 보류·답 대기 중 지금 작업과 관련된 것이 있으면 먼저 상기시킨다. 그것을 임의로 정하지 않는다.
-- 작업 단위가 끝나면 `/state` 절차로 state.md 를 갱신한다. 커밋했는데 state.md 를 안 고쳤으면 Stop 훅이 한 번 알린다. SessionStart 훅(`tools/session_handoff.py`)은 지금의 git 상태만 덧붙인다.
-- 훅 등록은 `.claude/settings.local.json` (git 제외).
+- 작업 단위가 끝나면 `/harness:state` 절차로 state.md 를 갱신한다. 커밋했는데 state.md 를 안 고쳤으면 Stop 훅이 한 번 알린다. SessionStart 훅(`tools/session_handoff.py`)은 지금의 git 상태만 덧붙인다.
+- 이 레포에는 개인 산출물(이직·구직 서류와 준비물, 개인 신상·재무·관계, 사내 정보, 개인 메모)을 만들거나 커밋하지 않는다. 지시가 그런 자리를 가리키면 멈추고 묻는다. 불가피하면 `_private/`(git 밖)에 둔다.
+- SessionStart 훅 등록은 `.claude/settings.local.json` (git 제외). Stop 훅과 `/harness:state` 는 사용자 범위 Claude Code 플러그인 `harness` 가 맡는다 (ADR 0023).
 
 ## 명령
 - 실행: `.venv\Scripts\streamlit run app.py` (이 PC 에서만 접속됨, `.streamlit/config.toml`)

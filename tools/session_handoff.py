@@ -35,7 +35,7 @@ def build_context():
         f"- 마지막 커밋: {git('log', '-1', '--format=%h %s (%ad)', '--date=short') or '확인 못 함'}",
         "- 커밋 안 된 변경: " + ("없음" if not status else "있음\n" + status),
         "- 푸시 안 된 커밋: " + ("없음" if not unpushed else "있음\n" + unpushed),
-        "- 위 내용이 state.md 와 다르면 state.md 가 낡은 것이다. 저장소 상태를 믿고, /state 로 갱신한다.",
+        "- 위 내용이 state.md 와 다르면 state.md 가 낡은 것이다. 저장소 상태를 믿고, /harness:state 로 갱신한다.",
     ]))
     return "\n\n".join(parts)
 

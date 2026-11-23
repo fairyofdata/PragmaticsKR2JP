@@ -30,4 +30,5 @@ ADR(Architecture Decision Record) = 중요한 설계 결정 하나를 "맥락 �
 | [0019](0019-own-japanese-input-register-contrast.md) | 실제로 쓴 일본어 입력, 상대가 바뀌면 어떻게, PII 게이트 연계 보류 | 채택 (배포 방식은 미정) | 2026-10-07 |
 | [0020](0020-import-format.md) | 외부 교정 기록의 가져오기 형식: 오답 노트가 아니라 문장 쌍(JSONL) | 제안 | 2026-10-07 |
 | [0021](0021-public-repo-local-notes.md) | 공개 저장소에서 개인·로컬 서술을 분리한다 (CLAUDE.local.md, HANDOFF 로컬 전용) | 채택 | 2026-10-31 |
-| [0022](0022-standard-harness-state-file.md) | 표준 하네스 v2: 지금 상태는 state.md 하나에, CLAUDE.md 에는 쓰지 않는다 | 채택 | 2026-11-16 |
+| [0022](0022-standard-harness-state-file.md) | 표준 하네스 v2: 지금 상태는 state.md 하나에, CLAUDE.md 에는 쓰지 않는다 | 채택 (4번 장치는 0023 이 바꿈) | 2026-11-16 |
+| [0023](0023-harness-plugin.md) | 갱신 스킬과 Stop 훅을 레포 사본에서 사용자 범위 플러그인으로 옮긴다 | 채택 | 2026-11-24 |
